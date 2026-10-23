@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateHand } from './handEval';
 import { scoreHand } from './scoring';
-import type { Card, Rank, Suit } from './types';
-
-const S: Record<string, Suit> = { h: 'hearts', d: 'diamonds', c: 'clubs', s: 'spades' };
-/** "Ah Kd 10s" -> cards */
-function cards(spec: string): Card[] {
-  return spec.split(' ').map((t, i) => {
-    const suit = S[t.slice(-1)];
-    const r = t.slice(0, -1);
-    const rank = ({ J: 11, Q: 12, K: 13, A: 14 } as Record<string, number>)[r] ?? Number(r);
-    return { id: `${i}-${r}${suit}`, rank: rank as Rank, suit };
-  });
-}
+import { cards } from './testHelpers';
 
 describe('evaluateHand', () => {
   it('detects hand types', () => {
@@ -52,7 +41,6 @@ describe('scoreHand', () => {
 
   it('applies hand levels', () => {
     // Pair lvl 2: 25 chips x3 mult, + 4 = 29 x 3 = 87
-    expect(scoreHand(cards('2h 2d'), { Pair: 2 }).total).toBe(87);
+    expect(scoreHand(cards('2h 2d'), { levels: { Pair: 2 } }).total).toBe(87);
   });
 });
-

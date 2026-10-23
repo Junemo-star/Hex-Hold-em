@@ -1,3 +1,8 @@
+import type { CharmInstance } from './charms/types';
+import { createDeck } from './deck';
+import type { HandLevels } from './scoring';
+import type { Card } from './types';
+
 export const FLOORS = 8;
 export type StageKind = 'small' | 'big' | 'boss';
 export const STAGES: StageKind[] = ['small', 'big', 'boss'];
@@ -12,6 +17,8 @@ export const STAGE_NAME: Record<StageKind, string> = {
 };
 
 export const START_MONEY = 4;
+export const MAX_CHARMS = 5;
+export const MAX_POTIONS = 2;
 
 export interface RunState {
   /** 1..FLOORS */
@@ -19,17 +26,33 @@ export interface RunState {
   /** 0..2 index into STAGES */
   stage: number;
   money: number;
+  /** the master deck; potions and packs change it permanently */
+  deck: Card[];
+  charms: CharmInstance[];
+  /** potion ids waiting to be used at a table */
+  potions: string[];
+  handLevels: HandLevels;
 }
 
 export interface Payout {
   base: number;
   handsBonus: number;
   interest: number;
+  /** extra money earned at the table (charms, gold cards) */
+  bonus: number;
   total: number;
 }
 
 export function newRun(): RunState {
-  return { floor: 1, stage: 0, money: START_MONEY };
+  return {
+    floor: 1,
+    stage: 0,
+    money: START_MONEY,
+    deck: createDeck(),
+    charms: [],
+    potions: [],
+    handLevels: {},
+  };
 }
 
 export function stageKind(run: RunState): StageKind {
@@ -40,12 +63,12 @@ export function targetFor(floor: number, kind: StageKind): number {
   return Math.round(BASE_TARGETS[floor - 1] * STAGE_MULT[kind]);
 }
 
-/** Money earned for beating a table: base + $1 per hand left + $1 per $5 held (max $5). */
-export function payoutFor(run: RunState, handsLeft: number): Payout {
+/** Money earned for beating a table: base + $1 per hand left + $1 per $5 held (max $5) + bonus. */
+export function payoutFor(run: RunState, handsLeft: number, bonus = 0): Payout {
   const base = STAGE_PAY[stageKind(run)];
   const handsBonus = handsLeft;
   const interest = Math.min(5, Math.floor(run.money / 5));
-  return { base, handsBonus, interest, total: base + handsBonus + interest };
+  return { base, handsBonus, interest, bonus, total: base + handsBonus + interest + bonus };
 }
 
 /** Advance to the next table. `victory` is true after beating the floor 8 boss. */
@@ -55,3 +78,11 @@ export function advance(run: RunState): { run: RunState; victory: boolean } {
   return { run: { ...run, floor: run.floor + 1, stage: 0 }, victory: false };
 }
 
+/** Swap the charm at index i with its neighbour (order matters for scoring). */
+export function moveCharm(charms: CharmInstance[], i: number, dir: -1 | 1): CharmInstance[] {
+  const j = i + dir;
+  if (j < 0 || j >= charms.length) return charms;
+  const next = charms.slice();
+  [next[i], next[j]] = [next[j], next[i]];
+  return next;
+}

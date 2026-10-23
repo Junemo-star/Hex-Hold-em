@@ -3,14 +3,20 @@ import type { Card } from '../../engine/types';
 
 interface Props {
   card: Card;
-  selected: boolean;
-  active: boolean;
-  onClick: () => void;
+  selected?: boolean;
+  active?: boolean;
+  onClick?: () => void;
 }
 
-export function CardView({ card, selected, active, onClick }: Props) {
+export function CardView({ card, selected = false, active = false, onClick }: Props) {
   const red = card.suit === 'hearts' || card.suit === 'diamonds';
-  const cls = ['card', red ? 'red' : 'black', selected ? 'selected' : '', active ? 'active' : '']
+  const cls = [
+    'card',
+    red ? 'red' : 'black',
+    card.enhancement ?? '',
+    selected ? 'selected' : '',
+    active ? 'active' : '',
+  ]
     .filter(Boolean)
     .join(' ');
   return (
@@ -21,7 +27,7 @@ export function CardView({ card, selected, active, onClick }: Props) {
         {SUIT_SYMBOL[card.suit]}
       </span>
       <span className="pip">{SUIT_SYMBOL[card.suit]}</span>
+      {card.enhancement && <span className="badge">{card.enhancement === 'gold' ? '$' : '🔥'}</span>}
     </button>
   );
 }
-

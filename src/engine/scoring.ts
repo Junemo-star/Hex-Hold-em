@@ -1,3 +1,5 @@
+import { getCharm } from './charms';
+import type { CharmInstance, Effect } from './charms/types';
 import { evaluateHand } from './handEval';
 import type { Card, HandType, ScoreResult, ScoreStep } from './types';
 
@@ -37,28 +39,83 @@ export function cardChips(card: Card): number {
   return card.rank;
 }
 
-/**
- * Pure scoring pipeline. Returns the list of steps for the UI to animate
- * plus the final total. Cards are scored left to right (order as given).
- */
-export function scoreHand(played: Card[], levels: HandLevels = {}): ScoreResult {
-  const { hand, scoringIds } = evaluateHand(played);
-  const base = handBaseAtLevel(hand, levels);
-
-  let chips = base.chips;
-  let mult = base.mult;
-  const steps: ScoreStep[] = [
-    { kind: 'hand', label: hand, chips, mult, addChips: base.chips, addMult: base.mult },
-  ];
-
-  const scoring = new Set(scoringIds);
-  for (const card of played) {
-    if (!scoring.has(card.id)) continue;
-    const add = cardChips(card);
-    chips += add;
-    steps.push({ kind: 'card', label: `+${add}`, cardId: card.id, chips, mult, addChips: add });
-  }
-
-  return { hand, steps, chips, mult, total: chips * mult };
+export interface ScoreContext {
+  levels?: HandLevels;
+  charms?: CharmInstance[];
+  /** cards still in hand when the hand is played (for onHeldInHand) */
+  held?: Card[];
+  discardsLeft?: number;
+  handsLeft?: number;
+  rng?: () => number;
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+type StepMeta = Pick<ScoreStep, 'kind' | 'label'> & Partial<Pick<ScoreStep, 'cardId' | 'charmIndex'>>;
+
+/**
+ * Pure scoring pipeline. Order: base hand -> each scoring card left to right
+ * (chips, fire, charm onCardScored) -> held cards (onHeldInHand) -> charms left
+ * to right (onHandScored). Returns the steps for the UI to animate plus the total.
+ */
+export function scoreHand(played: Card[], ctx: ScoreContext = {}): ScoreResult {
+  const { levels = {}, held = [], discardsLeft = 0, handsLeft = 0, rng = Math.random } = ctx;
+  const charms = (ctx.charms ?? []).map((c) => ({ ...c }));
+  const { hand, scoringIds } = evaluateHand(played);
+  const base = handBaseAtLevel(hand, levels);
+  const scoringSet = new Set(scoringIds);
+  const scoring = played.filter((c) => scoringSet.has(c.id));
+
+  let chips = 0;
+  let mult = 0;
+  let money = 0;
+  const steps: ScoreStep[] = [];
+  const burned: string[] = [];
+
+  const push = (meta: StepMeta, e: Effect) => {
+    if (e.chips) chips += e.chips;
+    if (e.mult) mult += e.mult;
+    if (e.xMult) mult = round2(mult * e.xMult);
+    if (e.money) money += e.money;
+    steps.push({
+      ...meta,
+      chips,
+      mult,
+      addChips: e.chips,
+      addMult: e.mult,
+      xMult: e.xMult,
+      money: e.money,
+    });
+  };
+
+  const fireHook = (hook: 'onCardScored' | 'onHeldInHand' | 'onHandScored', card?: Card) => {
+    charms.forEach((inst, i) => {
+      const def = getCharm(inst.defId);
+      const fn = def?.hooks[hook];
+      if (!def || !fn) return;
+      const e = fn({ hand, played, scoring, card, discardsLeft, handsLeft, counter: inst.counter });
+      if (!e) return;
+      if (e.counter !== undefined) inst.counter = e.counter;
+      if (e.chips || e.mult || e.xMult || e.money) {
+        push({ kind: 'charm', label: def.name, charmIndex: i, cardId: card?.id }, e);
+      }
+    });
+  };
+
+  push({ kind: 'hand', label: hand }, { chips: base.chips, mult: base.mult });
+
+  for (const card of scoring) {
+    const add = cardChips(card);
+    push({ kind: 'card', label: `+${add}`, cardId: card.id }, { chips: add });
+    if (card.enhancement === 'fire') {
+      push({ kind: 'card', label: 'ไพ่เพลิง', cardId: card.id }, { xMult: 2 });
+      if (rng() < 0.25) burned.push(card.id);
+    }
+    fireHook('onCardScored', card);
+  }
+
+  for (const card of held) fireHook('onHeldInHand', card);
+  fireHook('onHandScored');
+
+  return { hand, steps, chips, mult, total: Math.floor(chips * mult), money, charms, burned };
+}

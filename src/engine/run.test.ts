@@ -9,9 +9,10 @@ describe('run progression', () => {
     expect(targetFor(8, 'boss')).toBe(100000);
   });
 
-  it('pays base + hands + capped interest', () => {
+  it('pays base + hands + capped interest + bonus', () => {
     const run = { ...newRun(), money: 12 };
-    expect(payoutFor(run, 2)).toEqual({ base: 3, handsBonus: 2, interest: 2, total: 7 });
+    expect(payoutFor(run, 2)).toEqual({ base: 3, handsBonus: 2, interest: 2, bonus: 0, total: 7 });
+    expect(payoutFor(run, 2, 5).total).toBe(12);
     expect(payoutFor({ ...run, money: 100 }, 0).interest).toBe(5);
   });
 
@@ -21,8 +22,11 @@ describe('run progression', () => {
     ({ run } = advance(run));
     ({ run } = advance(run));
     expect(run).toMatchObject({ floor: 2, stage: 0 });
-    const last = { floor: 8, stage: 2, money: 0 };
+    const last = { ...newRun(), floor: 8, stage: 2 };
     expect(advance(last).victory).toBe(true);
   });
-});
 
+  it('starts with a full 52 card deck', () => {
+    expect(newRun().deck).toHaveLength(52);
+  });
+});

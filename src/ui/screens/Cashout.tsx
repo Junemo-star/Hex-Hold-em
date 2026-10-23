@@ -16,14 +16,13 @@ export function Cashout({ payout, money, onContinue }: Props) {
             <tr><td>รางวัลโต๊ะ</td><td>+${payout.base}</td></tr>
             <tr><td>Hands ที่เหลือ</td><td>+${payout.handsBonus}</td></tr>
             <tr><td>ดอกเบี้ย</td><td>+${payout.interest}</td></tr>
+            {payout.bonus > 0 && <tr><td>เครื่องราง / ไพ่ทอง</td><td>+${payout.bonus}</td></tr>}
             <tr className="total"><td>รวม</td><td>+${payout.total}</td></tr>
           </tbody>
         </table>
         <p>เงินคงเหลือ <strong>${money}</strong></p>
-        <p className="muted">(ร้านค้าจะมาใน Phase 3)</p>
         <button className="btn play" onClick={onContinue}>ไปต่อ</button>
       </div>
     </div>
   );
 }
-
