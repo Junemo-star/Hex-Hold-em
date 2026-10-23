@@ -1,6 +1,5 @@
 import type { CharmInstance } from './charms/types';
 import { createDeck } from './deck';
-import type { HandLevels } from './scoring';
 import type { Card } from './types';
 
 export const FLOORS = 8;
@@ -18,7 +17,6 @@ export const STAGE_NAME: Record<StageKind, string> = {
 
 export const START_MONEY = 4;
 export const MAX_CHARMS = 5;
-export const MAX_POTIONS = 2;
 
 export interface RunState {
   /** 1..FLOORS */
@@ -26,19 +24,15 @@ export interface RunState {
   /** 0..2 index into STAGES */
   stage: number;
   money: number;
-  /** the master deck; potions and packs change it permanently */
   deck: Card[];
   charms: CharmInstance[];
-  /** potion ids waiting to be used at a table */
-  potions: string[];
-  handLevels: HandLevels;
 }
 
 export interface Payout {
   base: number;
   handsBonus: number;
   interest: number;
-  /** extra money earned at the table (charms, gold cards) */
+  /** extra money earned at the table (e.g. Lucky Coin charm) */
   bonus: number;
   total: number;
 }
@@ -50,8 +44,6 @@ export function newRun(): RunState {
     money: START_MONEY,
     deck: createDeck(),
     charms: [],
-    potions: [],
-    handLevels: {},
   };
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getDealerForFloor } from './engine/dealers';
 import {
   advance,
   newRun,
@@ -47,10 +48,8 @@ export function App() {
     const payout = payoutFor(run, result.handsLeft, result.bonusMoney);
     setRun({
       ...run,
-      money: run.money + payout.total,
-      deck: result.deck,
+      money: Math.max(0, run.money + payout.total),
       charms: result.charms,
-      potions: result.potions,
     });
     setScreen({ name: 'cashout', payout });
   }
@@ -72,12 +71,14 @@ export function App() {
       return <FloorMap run={run} onEnter={enterTable} />;
     case 'table': {
       const kind = stageKind(run);
+      const dealer = kind === 'boss' ? getDealerForFloor(run.floor) : undefined;
       return (
         <Table
           key={screen.attempt}
-          title={`${STAGE_NAME[kind]} · ชั้น ${run.floor}`}
+          title={dealer ? `${dealer.emoji} ${dealer.name} · ชั้น ${run.floor}` : `${STAGE_NAME[kind]} · ชั้น ${run.floor}`}
           target={targetFor(run.floor, kind)}
           run={run}
+          dealer={dealer}
           onFinish={finishTable}
         />
       );

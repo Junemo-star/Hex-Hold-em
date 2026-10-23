@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { CHARMS } from './charms';
 import { scoreHand } from './scoring';
 import { cards } from './testHelpers';
 
 const charm = (defId: string, counter = 0) => ({ defId, counter });
 
 describe('charm scoring', () => {
+  it('registers all 24 charms', () => {
+    expect(CHARMS).toHaveLength(24);
+  });
+
   it('beer jug adds +4 mult', () => {
     // Pair 10+2+2=14 chips, mult 2+4=6 => 84
     expect(scoreHand(cards('2h 2d'), { charms: [charm('beer-jug')] }).total).toBe(84);
@@ -51,16 +56,47 @@ describe('charm scoring', () => {
     const r = scoreHand(cards('Kh Kd 3c'), { charms: [charm('lucky-coin')] });
     expect(r.money).toBe(2);
   });
-});
 
-describe('enhancements', () => {
-  it('fire card doubles mult and can burn', () => {
-    const hand = cards('2h 2d');
-    hand[0] = { ...hand[0], enhancement: 'fire' };
-    const burn = scoreHand(hand, { rng: () => 0 });
-    expect(burn.mult).toBe(4);
-    expect(burn.burned).toEqual([hand[0].id]);
-    expect(scoreHand(hand, { rng: () => 0.99 }).burned).toEqual([]);
+  it('supports new Phase 5 charms (odd-candle, even-goblet, blood-pact, philosopher-stone)', () => {
+    const odd = scoreHand(cards('3h 3d'), { charms: [charm('odd-candle')] });
+    // Pair base 10 + 3 + 3 + 25 + 25 = 66 chips
+    expect(odd.chips).toBe(66);
+
+    const even = scoreHand(cards('4h 4d'), { charms: [charm('even-goblet')] });
+    // Pair base mult 2 + 4 + 4 = 10
+    expect(even.mult).toBe(10);
+
+    const pact = scoreHand(cards('4h 4d'), {
+      charms: [charm('blood-pact'), charm('philosopher-stone')],
+      discardsLeft: 0,
+    });
+    // mult 2 * 2 * 2 = 8, money +2
+    expect(pact.mult).toBe(8);
+    expect(pact.money).toBe(2);
   });
 });
 
+describe('boss curses in scoring', () => {
+  it('disables a cursed suit from adding chips or triggering charms', () => {
+    const r = scoreHand(cards('2h 2d'), {
+      charms: [charm('fire-ring')],
+      disabledSuit: 'hearts',
+    });
+    expect(r.chips).toBe(12);
+    expect(r.mult).toBe(2);
+  });
+
+  it('nullifies banned hands completely', () => {
+    const r = scoreHand(cards('2h 2d'), { bannedHands: ['Pair'] });
+    expect(r.total).toBe(0);
+    expect(r.nullified).toBe(true);
+  });
+
+  it('ignores sealed charm indices', () => {
+    const r = scoreHand(cards('2h 2d'), {
+      charms: [charm('beer-jug'), charm('twin-mirror')],
+      sealedCharmIndices: [0],
+    });
+    expect(r.mult).toBe(10);
+  });
+});

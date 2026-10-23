@@ -123,3 +123,116 @@ body {
 .owned-potions { text-align: center; }
 .tag { background: #4b2d78; border-radius: 8px; padding: 3px 8px; margin: 0 4px; }
 .modal.wide { max-width: 760px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+
+/* ---- Phase 4: Boss dealers & curses ---- */
+.floater.curse { color: #ff4d79; }
+
+.dealer-banner {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: linear-gradient(135deg, #2a1038, #170924);
+  border: 2px solid #7d369e;
+  border-radius: 12px;
+  padding: 12px 18px;
+}
+.dealer-banner.curse-active {
+  border-color: #ff4d79;
+  box-shadow: 0 0 18px rgba(255, 77, 121, 0.35);
+}
+.dealer-avatar {
+  font-size: 2.8rem;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #140821;
+  border: 2px solid #5d2b7a;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dealer-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.dealer-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dealer-name { font-size: 1.15rem; font-weight: 800; color: #ffb454; }
+.dealer-title { font-size: 0.9rem; opacity: 0.8; }
+.curse-pill {
+  font-size: 0.78rem;
+  background: #3a174d;
+  border: 1px solid #8c3fb0;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.curse-pill.triggered {
+  background: #59122b;
+  border-color: #ff4d79;
+  color: #ffb8c9;
+}
+.dealer-speech { font-style: italic; color: #e8d4ff; font-size: 0.95rem; }
+.dealer-extra { font-size: 0.82rem; color: #ff809f; font-weight: 700; }
+.dealer-quote { font-style: italic; color: #ffb454; margin: 8px 0; }
+
+.stage.boss-stage { width: 280px; border-color: #9b4dca; }
+.stage-subtitle { font-size: 0.82rem; opacity: 0.75; margin-top: 2px; }
+.stage-curse { font-size: 0.78rem; color: #ff99b4; margin: 8px 0; line-height: 1.35; }
+
+.charm.sealed {
+  opacity: 0.45;
+  border-color: #ff4d79;
+  filter: grayscale(0.7);
+}
+.card.facedown {
+  background: radial-gradient(circle, #382059 0%, #1c0f30 100%);
+  border-color: #7c4dff;
+  color: #d4bfff;
+}
+.card.cursed-card {
+  opacity: 0.55;
+  border-color: #ff4d79;
+}
+
+/* ---- Phase 5: Game Juice, 3D Tilt, Screen Shake, Animated Background, ArtSlot ---- */
+body {
+  background: radial-gradient(ellipse at 20% 0%, #381a5c 0%, #1a0d30 50%, #0e061a 100%);
+  background-size: 200% 200%;
+  animation: mysticBg 14s ease-in-out infinite alternate;
+}
+@keyframes mysticBg {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+.card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.formula {
+  transition: transform 0.12s cubic-bezier(0.22, 1.6, 0.36, 1);
+}
+.formula.pop {
+  transform: scale(1.13);
+}
+
+.screen-shake {
+  animation: shakeAnim 0.36s ease-in-out;
+}
+@keyframes shakeAnim {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-7px, 4px) rotate(-0.6deg); }
+  40% { transform: translate(7px, -5px) rotate(0.6deg); }
+  60% { transform: translate(-5px, -3px) rotate(-0.4deg); }
+  80% { transform: translate(5px, 4px) rotate(0.4deg); }
+}
+
+.art-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.art-slot-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}

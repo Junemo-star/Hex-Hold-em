@@ -1,52 +1,60 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CharmInstance } from '../../engine/charms/types';
+import type { DealerDef } from '../../engine/dealers';
 import { draw, shuffle, sortCards } from '../../engine/deck';
 import { evaluateHand } from '../../engine/handEval';
-import { getPotion } from '../../engine/potions';
-import { MAX_POTIONS, moveCharm, type RunState } from '../../engine/run';
-import { handBaseAtLevel, scoreHand } from '../../engine/scoring';
-import type { Card, ScoreResult, ScoreStep } from '../../engine/types';
+import { moveCharm, type RunState } from '../../engine/run';
+import { handBase, scoreHand } from '../../engine/scoring';
+import type { Card, HandType, ScoreResult, ScoreStep } from '../../engine/types';
 import { CardView } from '../components/CardView';
 import { CharmBar } from '../components/CharmBar';
-import { playBlip } from '../fx/sound';
+import { DealerBanner } from '../components/DealerBanner';
+import { playBlip, playCurseSound, playVictorySound } from '../fx/sound';
 
-const HAND_SIZE = 8;
+const BASE_HAND_SIZE = 8;
 const MAX_SELECT = 5;
 const START_HANDS = 4;
 const START_DISCARDS = 3;
-const GOLD_PAY = 3;
 
 export interface TableResult {
   won: boolean;
   handsLeft: number;
-  /** money earned at the table: charms + gold cards held at the end */
+  /** net money change at the table (Lucky Coin minus Baron Crimson's discard tax) */
   bonusMoney: number;
-  /** master deck after potions and burned cards */
-  deck: Card[];
   charms: CharmInstance[];
-  potions: string[];
 }
 
 interface TableProps {
   title: string;
   target: number;
   run: RunState;
+  dealer?: DealerDef;
   onFinish: (result: TableResult) => void;
 }
 
 type Phase = 'idle' | 'scoring' | 'won' | 'lost';
-type Floater = { key: number; text: string; kind: 'chips' | 'mult' | 'money'; x: number };
+type Floater = { key: number; text: string; kind: 'chips' | 'mult' | 'money' | 'curse'; x: number };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function Table({ title, target, run, onFinish }: TableProps) {
+function maybeFlipOneCard(cards: Card[], active: boolean): Card[] {
+  const cleared = cards.map((c) => ({ ...c, faceDown: false }));
+  if (!active || cleared.length === 0) return cleared;
+  const idx = Math.floor(Math.random() * cleared.length);
+  return cleared.map((c, i) => (i === idx ? { ...c, faceDown: true } : c));
+}
+
+export function Table({ title, target: initialTarget, run, dealer, onFinish }: TableProps) {
+  const handSize = BASE_HAND_SIZE + (dealer?.handSizeDelta ?? 0);
+  const [currentTarget, setCurrentTarget] = useState(initialTarget);
+  const [bossPhase, setBossPhase] = useState<1 | 2>(1);
   const [drawPile, setDrawPile] = useState<Card[]>([]);
   const [hand, setHand] = useState<Card[]>([]);
-  const [masterDeck, setMasterDeck] = useState<Card[]>(run.deck);
   const [charms, setCharms] = useState<CharmInstance[]>(run.charms);
-  const [potions, setPotions] = useState<string[]>(run.potions);
   const [selected, setSelected] = useState<string[]>([]);
   const [handsLeft, setHandsLeft] = useState(START_HANDS);
+  const [handsPlayed, setHandsPlayed] = useState(0);
+  const [playedHandTypes, setPlayedHandTypes] = useState<HandType[]>([]);
   const [discardsLeft, setDiscardsLeft] = useState(START_DISCARDS);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -56,13 +64,47 @@ export function Table({ title, target, run, onFinish }: TableProps) {
   const [activeCard, setActiveCard] = useState<string | null>(null);
   const [activeCharm, setActiveCharm] = useState<number | null>(null);
   const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [speech, setSpeech] = useState<string>(dealer?.dialogue.intro ?? '');
+  const [shaking, setShaking] = useState(false);
+  const [popping, setPopping] = useState(false);
   const speedRef = useRef(speed);
   speedRef.current = speed;
   const floatKey = useRef(0);
   const bonusRef = useRef(0);
 
+  function triggerShake() {
+    setShaking(true);
+    setTimeout(() => setShaking(false), 380);
+  }
+
+  function triggerPop() {
+    setPopping(true);
+    setTimeout(() => setPopping(false), 220);
+  }
+
+  // Derived active boss curses
+  const disabledSuit =
+    dealer?.disabledSuitAfterHand2 && handsPlayed >= 2 ? dealer.disabledSuitAfterHand2 : undefined;
+  const sealedIndices =
+    dealer?.sealLeftCharmAfterHand2 && handsPlayed >= 2 && charms.length > 0 ? [0] : [];
+  const bannedHands: HandType[] = useMemo(() => {
+    const list: HandType[] = [];
+    if (dealer?.bannedHand) list.push(dealer.bannedHand);
+    if (dealer?.noRepeatHandsAndTwoPhase) list.push(...playedHandTypes);
+    return list;
+  }, [dealer, playedHandTypes]);
+  const curseActive =
+    Boolean(disabledSuit) ||
+    sealedIndices.length > 0 ||
+    Boolean(dealer?.handSizeDelta) ||
+    Boolean(dealer?.discardCost) ||
+    Boolean(dealer?.bannedHand) ||
+    Boolean(dealer?.shuffleCharmsEachHand && handsPlayed > 0) ||
+    Boolean(dealer?.flipCardAfterHand1 && handsPlayed >= 1) ||
+    Boolean(dealer?.noRepeatHandsAndTwoPhase && (playedHandTypes.length > 0 || bossPhase === 2));
+
   useEffect(() => {
-    const { drawn, rest } = draw(shuffle(run.deck), HAND_SIZE);
+    const { drawn, rest } = draw(shuffle(run.deck), handSize);
     setDrawPile(rest);
     setHand(sortCards(drawn, 'rank'));
     bonusRef.current = 0;
@@ -76,9 +118,15 @@ export function Table({ title, target, run, onFinish }: TableProps) {
   const selectedCards = useMemo(() => hand.filter((c) => selected.includes(c.id)), [hand, selected]);
   const preview = useMemo(() => {
     if (selectedCards.length === 0) return null;
+    if (selectedCards.some((c) => c.faceDown)) {
+      return { type: '??? (ไพ่คว่ำ)' as string, chips: 0, mult: 0 };
+    }
     const { hand: type } = evaluateHand(selectedCards);
-    return { type, ...handBaseAtLevel(type, run.handLevels) };
-  }, [selectedCards, run.handLevels]);
+    if (bannedHands.includes(type)) {
+      return { type: `${type} (ถูกห้าม!)`, chips: 0, mult: 0 };
+    }
+    return { type, ...handBase(type) };
+  }, [selectedCards, bannedHands]);
 
   function toggle(id: string) {
     if (phase !== 'idle') return;
@@ -88,18 +136,27 @@ export function Table({ title, target, run, onFinish }: TableProps) {
   }
 
   /** Remove used cards from hand and refill from the draw pile. */
-  function refill(removeIds: string[]) {
+  function refill(removeIds: string[], nextHandsPlayed: number) {
     const remaining = hand.filter((c) => !removeIds.includes(c.id));
-    const { drawn, rest } = draw(drawPile, HAND_SIZE - remaining.length);
+    const { drawn, rest } = draw(drawPile, handSize - remaining.length);
     setDrawPile(rest);
-    setHand(sortCards([...remaining, ...drawn], sortBy));
+    const sorted = sortCards([...remaining, ...drawn], sortBy);
+    const shouldFlip = Boolean(dealer?.flipCardAfterHand1 && nextHandsPlayed >= 1);
+    setHand(maybeFlipOneCard(sorted, shouldFlip));
     setSelected([]);
   }
 
   function discard() {
     if (phase !== 'idle' || selected.length === 0 || discardsLeft === 0) return;
     setDiscardsLeft((d) => d - 1);
-    refill(selected);
+    if (dealer?.discardCost) {
+      bonusRef.current = Math.max(-run.money, bonusRef.current - dealer.discardCost);
+      setSpeech(dealer.dialogue.curse);
+      pushFloater(`-$${dealer.discardCost}`, 'curse', 0);
+      playCurseSound();
+      triggerShake();
+    }
+    refill(selected, handsPlayed);
   }
 
   function pushFloater(text: string, kind: Floater['kind'], x: number) {
@@ -109,6 +166,10 @@ export function Table({ title, target, run, onFinish }: TableProps) {
   }
 
   function showFloaters(step: ScoreStep) {
+    if (step.kind === 'curse') {
+      pushFloater(step.label, 'curse', 0);
+      return;
+    }
     const items: Array<[string, Floater['kind']]> = [];
     if (step.addChips) items.push([`+${step.addChips}`, 'chips']);
     if (step.addMult) items.push([`+${step.addMult} Mult`, 'mult']);
@@ -119,16 +180,26 @@ export function Table({ title, target, run, onFinish }: TableProps) {
 
   async function play() {
     if (phase !== 'idle' || selected.length === 0 || handsLeft === 0) return;
-    const played = selectedCards;
+    const played = selectedCards.map((c) => ({ ...c, faceDown: false }));
+    setHand((h) => h.map((c) => (selected.includes(c.id) ? { ...c, faceDown: false } : c)));
     const heldCards = hand.filter((c) => !selected.includes(c.id));
+
     const result: ScoreResult = scoreHand(played, {
-      levels: run.handLevels,
       charms,
       held: heldCards,
       discardsLeft,
       handsLeft,
+      disabledSuit,
+      bannedHands,
+      sealedCharmIndices: sealedIndices,
     });
     setPhase('scoring');
+
+    if (result.nullified && dealer) {
+      setSpeech(dealer.dialogue.curse);
+      playCurseSound();
+      triggerShake();
+    }
 
     let pitch = 0;
     for (const step of result.steps) {
@@ -136,61 +207,84 @@ export function Table({ title, target, run, onFinish }: TableProps) {
       setActiveCard(step.cardId ?? null);
       setActiveCharm(step.charmIndex ?? null);
       showFloaters(step);
-      playBlip(pitch++);
+      triggerPop();
+      if (step.xMult && step.xMult >= 2) triggerShake();
+      if (step.kind === 'curse') {
+        playCurseSound();
+      } else {
+        playBlip(pitch++);
+      }
       await sleep(450 / speedRef.current);
     }
     setActiveCard(null);
     setActiveCharm(null);
     setLive({ chips: result.chips, mult: result.mult, label: result.hand });
+    if (result.total >= currentTarget * 0.4) triggerShake();
     await sleep(350 / speedRef.current);
 
-    setCharms(result.charms);
-    bonusRef.current += result.money;
-    if (result.burned.length > 0) {
-      setMasterDeck((m) => m.filter((c) => !result.burned.includes(c.id)));
+    let nextCharms = result.charms;
+    if (dealer?.shuffleCharmsEachHand && nextCharms.length > 1) {
+      nextCharms = shuffle(nextCharms);
+      setSpeech(dealer.dialogue.curse);
+      playCurseSound();
     }
+    setCharms(nextCharms);
+    bonusRef.current += result.money;
 
     const newScore = score + result.total;
     setScore(newScore);
-    const newHands = handsLeft - 1;
+    const nextHandsPlayed = handsPlayed + 1;
+    setHandsPlayed(nextHandsPlayed);
+    if (!playedHandTypes.includes(result.hand)) {
+      setPlayedHandTypes((prev) => [...prev, result.hand]);
+    }
+
+    if (dealer && result.total >= currentTarget * 0.5 && !result.nullified) {
+      setSpeech(dealer.dialogue.bigScore);
+    }
+
+    if (
+      dealer &&
+      ((dealer.disabledSuitAfterHand2 && nextHandsPlayed === 2) ||
+        (dealer.sealLeftCharmAfterHand2 && nextHandsPlayed === 2) ||
+        (dealer.flipCardAfterHand1 && nextHandsPlayed === 1))
+    ) {
+      setSpeech(dealer.dialogue.curse);
+      playCurseSound();
+    }
+
+    let newHands = handsLeft - 1;
+    let activeTarget = currentTarget;
+
+    if (newScore >= activeTarget && dealer?.noRepeatHandsAndTwoPhase && bossPhase === 1) {
+      activeTarget = Math.round(activeTarget * 1.5);
+      setCurrentTarget(activeTarget);
+      setBossPhase(2);
+      newHands += 2;
+      setSpeech(dealer.dialogue.curse);
+      playCurseSound();
+      triggerShake();
+      pushFloater('Phase 2! เป้าหมาย +50% (+2 Hands)', 'curse', 0);
+    }
+
     setHandsLeft(newHands);
     await sleep(500 / speedRef.current);
 
-    if (newScore >= target) {
-      bonusRef.current += heldCards.filter((c) => c.enhancement === 'gold').length * GOLD_PAY;
+    if (newScore >= activeTarget) {
+      if (dealer) setSpeech(dealer.dialogue.playerWin);
+      playVictorySound();
       setPhase('won');
       return;
     }
     if (newHands === 0) {
+      if (dealer) setSpeech(dealer.dialogue.playerLose);
+      playCurseSound();
       setPhase('lost');
       return;
     }
-    refill(played.map((c) => c.id));
+    refill(played.map((c) => c.id), nextHandsPlayed);
     setLive(null);
     setPhase('idle');
-  }
-
-  function canUsePotion(id: string): boolean {
-    const def = getPotion(id);
-    return (
-      phase === 'idle' &&
-      !!def &&
-      selectedCards.length >= def.minTargets &&
-      selectedCards.length <= def.maxTargets
-    );
-  }
-
-  function usePotion(index: number) {
-    const def = getPotion(potions[index]);
-    if (!def || !canUsePotion(def.id)) return;
-    const targets = selectedCards;
-    const newHand = def.apply(hand, targets);
-    const { drawn, rest } = draw(drawPile, Math.max(0, HAND_SIZE - newHand.length));
-    setHand(sortCards([...newHand, ...drawn], sortBy));
-    setDrawPile(rest);
-    setMasterDeck((m) => def.apply(m, targets));
-    setPotions((p) => p.filter((_, i) => i !== index));
-    setSelected([]);
   }
 
   function finish() {
@@ -198,21 +292,29 @@ export function Table({ title, target, run, onFinish }: TableProps) {
       won: phase === 'won',
       handsLeft,
       bonusMoney: bonusRef.current,
-      deck: masterDeck,
       charms,
-      potions,
     });
   }
 
   const shown = live ?? (preview ? { chips: preview.chips, mult: preview.mult, label: preview.type } : null);
   const canAct = phase === 'idle' && selected.length > 0;
 
+  const extraStatus = useMemo(() => {
+    if (!dealer) return undefined;
+    const parts: string[] = [];
+    if (disabledSuit) parts.push('ไพ่ ♥ ถูกสาป (ไม่นับแต้ม)');
+    if (sealedIndices.length > 0) parts.push('เครื่องรางช่องซ้ายสุดถูกผนึก');
+    if (bannedHands.length > 0) parts.push(`มือต้องห้าม: ${bannedHands.join(', ')}`);
+    if (bossPhase === 2) parts.push('🔥 ร่างที่ 2 ของเจ้าของบ่อน!');
+    return parts.join(' · ') || undefined;
+  }, [dealer, disabledSuit, sealedIndices, bannedHands, bossPhase]);
+
   return (
-    <div className="table">
+    <div className={`table ${shaking ? 'screen-shake' : ''}`}>
       <header className="topbar">
         <div className="blind">
           <div className="blind-name">{title}</div>
-          <div className="blind-target">เป้าหมาย <strong>{target}</strong></div>
+          <div className="blind-target">เป้าหมาย <strong>{currentTarget}</strong></div>
         </div>
         <div className="round-score">
           <span>แต้มรวม</span>
@@ -220,15 +322,25 @@ export function Table({ title, target, run, onFinish }: TableProps) {
         </div>
       </header>
 
+      {dealer && (
+        <DealerBanner
+          dealer={dealer}
+          speech={speech}
+          curseActive={curseActive}
+          extraStatus={extraStatus}
+        />
+      )}
+
       <CharmBar
         charms={charms}
         activeIndex={activeCharm}
+        sealedIndices={sealedIndices}
         onMove={phase === 'idle' ? (i, dir) => setCharms((c) => moveCharm(c, i, dir)) : undefined}
       />
 
       <section className="scorebox">
         <div className="hand-name">{shown?.label ?? 'เลือกไพ่เพื่อเล่น'}</div>
-        <div className="formula">
+        <div className={`formula ${popping ? 'pop' : ''}`}>
           <span className="chips">{shown?.chips ?? 0}</span>
           <span className="times">×</span>
           <span className="mult">{shown?.mult ?? 0}</span>
@@ -249,6 +361,7 @@ export function Table({ title, target, run, onFinish }: TableProps) {
             card={c}
             selected={selected.includes(c.id)}
             active={activeCard === c.id}
+            disabledSuit={Boolean(disabledSuit && c.suit === disabledSuit)}
             onClick={() => toggle(c.id)}
           />
         ))}
@@ -260,31 +373,12 @@ export function Table({ title, target, run, onFinish }: TableProps) {
           <div className="counter discards">Discards <strong>{discardsLeft}</strong></div>
           <div className="counter deck">สำรับ <strong>{drawPile.length}</strong></div>
         </div>
-        <div className="potions">
-          {Array.from({ length: MAX_POTIONS }, (_, i) => {
-            const def = potions[i] ? getPotion(potions[i]) : undefined;
-            if (!def) return <div key={i} className="potion empty">ช่องยา</div>;
-            return (
-              <button
-                key={i}
-                className="potion"
-                disabled={!canUsePotion(def.id)}
-                title={def.description}
-                onClick={() => usePotion(i)}
-              >
-                <span className="potion-emoji">{def.emoji}</span>
-                <span className="potion-name">{def.name}</span>
-                <span className="potion-desc">{def.description}</span>
-              </button>
-            );
-          })}
-        </div>
         <div className="buttons">
           <button className="btn play" disabled={!canAct || handsLeft === 0} onClick={play}>
             Play Hand
           </button>
           <button className="btn discard" disabled={!canAct || discardsLeft === 0} onClick={discard}>
-            Discard
+            Discard{dealer?.discardCost ? ` (-$${dealer.discardCost})` : ''}
           </button>
           <div className="sort">
             <button className="btn small" onClick={() => setSortBy('rank')} disabled={sortBy === 'rank'}>เรียงแต้ม</button>
@@ -302,7 +396,8 @@ export function Table({ title, target, run, onFinish }: TableProps) {
         <div className="overlay">
           <div className="modal">
             <h2>{phase === 'won' ? 'ชนะโต๊ะนี้!' : 'แพ้แล้ว...'}</h2>
-            <p>แต้มสุดท้าย {score} / {target}</p>
+            {dealer && <p className="dealer-quote">“{speech}”</p>}
+            <p>แต้มสุดท้าย {score} / {currentTarget}</p>
             <button className="btn play" onClick={finish}>
               {phase === 'won' ? 'รับเงิน' : 'ต่อไป'}
             </button>

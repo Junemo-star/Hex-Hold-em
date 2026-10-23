@@ -1,36 +1,27 @@
 import { getCharm } from './charms';
 import type { CharmInstance, Effect } from './charms/types';
 import { evaluateHand } from './handEval';
-import type { Card, HandType, ScoreResult, ScoreStep } from './types';
+import type { Card, HandType, ScoreResult, ScoreStep, Suit } from './types';
 
 interface HandBase {
   chips: number;
   mult: number;
-  perLevelChips: number;
-  perLevelMult: number;
 }
 
 export const HAND_BASE: Record<HandType, HandBase> = {
-  'High Card': { chips: 5, mult: 1, perLevelChips: 10, perLevelMult: 1 },
-  'Pair': { chips: 10, mult: 2, perLevelChips: 15, perLevelMult: 1 },
-  'Two Pair': { chips: 20, mult: 2, perLevelChips: 20, perLevelMult: 1 },
-  'Three of a Kind': { chips: 30, mult: 3, perLevelChips: 20, perLevelMult: 2 },
-  'Straight': { chips: 30, mult: 4, perLevelChips: 30, perLevelMult: 3 },
-  'Flush': { chips: 35, mult: 4, perLevelChips: 15, perLevelMult: 2 },
-  'Full House': { chips: 40, mult: 4, perLevelChips: 25, perLevelMult: 2 },
-  'Four of a Kind': { chips: 60, mult: 7, perLevelChips: 30, perLevelMult: 3 },
-  'Straight Flush': { chips: 100, mult: 8, perLevelChips: 40, perLevelMult: 4 },
+  'High Card': { chips: 5, mult: 1 },
+  'Pair': { chips: 10, mult: 2 },
+  'Two Pair': { chips: 20, mult: 2 },
+  'Three of a Kind': { chips: 30, mult: 3 },
+  'Straight': { chips: 30, mult: 4 },
+  'Flush': { chips: 35, mult: 4 },
+  'Full House': { chips: 40, mult: 4 },
+  'Four of a Kind': { chips: 60, mult: 7 },
+  'Straight Flush': { chips: 100, mult: 8 },
 };
 
-export type HandLevels = Partial<Record<HandType, number>>;
-
-export function handBaseAtLevel(hand: HandType, levels: HandLevels = {}) {
-  const base = HAND_BASE[hand];
-  const lv = (levels[hand] ?? 1) - 1;
-  return {
-    chips: base.chips + base.perLevelChips * lv,
-    mult: base.mult + base.perLevelMult * lv,
-  };
+export function handBase(hand: HandType): HandBase {
+  return HAND_BASE[hand];
 }
 
 export function cardChips(card: Card): number {
@@ -40,13 +31,15 @@ export function cardChips(card: Card): number {
 }
 
 export interface ScoreContext {
-  levels?: HandLevels;
   charms?: CharmInstance[];
   /** cards still in hand when the hand is played (for onHeldInHand) */
   held?: Card[];
   discardsLeft?: number;
   handsLeft?: number;
-  rng?: () => number;
+  /** Boss curse modifiers */
+  disabledSuit?: Suit;
+  bannedHands?: HandType[];
+  sealedCharmIndices?: number[];
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -55,22 +48,42 @@ type StepMeta = Pick<ScoreStep, 'kind' | 'label'> & Partial<Pick<ScoreStep, 'car
 
 /**
  * Pure scoring pipeline. Order: base hand -> each scoring card left to right
- * (chips, fire, charm onCardScored) -> held cards (onHeldInHand) -> charms left
- * to right (onHandScored). Returns the steps for the UI to animate plus the total.
+ * (chips, charm onCardScored) -> held cards (onHeldInHand) -> charms left
+ * to right (onHandScored). Respects boss curses (banned hands, disabled suit, sealed charms).
  */
 export function scoreHand(played: Card[], ctx: ScoreContext = {}): ScoreResult {
-  const { levels = {}, held = [], discardsLeft = 0, handsLeft = 0, rng = Math.random } = ctx;
+  const {
+    held = [],
+    discardsLeft = 0,
+    handsLeft = 0,
+    disabledSuit,
+    bannedHands = [],
+    sealedCharmIndices = [],
+  } = ctx;
   const charms = (ctx.charms ?? []).map((c) => ({ ...c }));
   const { hand, scoringIds } = evaluateHand(played);
-  const base = handBaseAtLevel(hand, levels);
+  const base = handBase(hand);
   const scoringSet = new Set(scoringIds);
-  const scoring = played.filter((c) => scoringSet.has(c.id));
+  const scoring = played.filter((c) => scoringSet.has(c.id) && c.suit !== disabledSuit);
+  const sealedSet = new Set(sealedCharmIndices);
+
+  if (bannedHands.includes(hand)) {
+    return {
+      hand,
+      steps: [{ kind: 'curse', label: `คำสาป! มือ ${hand} ถูกห้าม (0 แต้ม)`, chips: 0, mult: 0 }],
+      chips: 0,
+      mult: 0,
+      total: 0,
+      money: 0,
+      charms,
+      nullified: true,
+    };
+  }
 
   let chips = 0;
   let mult = 0;
   let money = 0;
   const steps: ScoreStep[] = [];
-  const burned: string[] = [];
 
   const push = (meta: StepMeta, e: Effect) => {
     if (e.chips) chips += e.chips;
@@ -90,6 +103,7 @@ export function scoreHand(played: Card[], ctx: ScoreContext = {}): ScoreResult {
 
   const fireHook = (hook: 'onCardScored' | 'onHeldInHand' | 'onHandScored', card?: Card) => {
     charms.forEach((inst, i) => {
+      if (sealedSet.has(i)) return;
       const def = getCharm(inst.defId);
       const fn = def?.hooks[hook];
       if (!def || !fn) return;
@@ -104,18 +118,25 @@ export function scoreHand(played: Card[], ctx: ScoreContext = {}): ScoreResult {
 
   push({ kind: 'hand', label: hand }, { chips: base.chips, mult: base.mult });
 
-  for (const card of scoring) {
+  for (const card of played) {
+    if (!scoringSet.has(card.id)) continue;
+    if (card.suit === disabledSuit) {
+      steps.push({
+        kind: 'curse',
+        label: 'ไพ่ถูกสาป!',
+        cardId: card.id,
+        chips,
+        mult,
+      });
+      continue;
+    }
     const add = cardChips(card);
     push({ kind: 'card', label: `+${add}`, cardId: card.id }, { chips: add });
-    if (card.enhancement === 'fire') {
-      push({ kind: 'card', label: 'ไพ่เพลิง', cardId: card.id }, { xMult: 2 });
-      if (rng() < 0.25) burned.push(card.id);
-    }
     fireHook('onCardScored', card);
   }
 
   for (const card of held) fireHook('onHeldInHand', card);
   fireHook('onHandScored');
 
-  return { hand, steps, chips, mult, total: Math.floor(chips * mult), money, charms, burned };
+  return { hand, steps, chips, mult, total: Math.floor(chips * mult), money, charms };
 }

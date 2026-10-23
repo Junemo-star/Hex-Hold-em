@@ -38,9 +38,4 @@ describe('scoreHand', () => {
     expect(r.steps[0].kind).toBe('hand');
     expect(r.steps).toHaveLength(3);
   });
-
-  it('applies hand levels', () => {
-    // Pair lvl 2: 25 chips x3 mult, + 4 = 29 x 3 = 87
-    expect(scoreHand(cards('2h 2d'), { levels: { Pair: 2 } }).total).toBe(87);
-  });
 });

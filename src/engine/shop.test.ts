@@ -1,23 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { getPotion } from './potions';
 import { newRun } from './run';
 import { addChoice, buyItem, buyPack, generateShop, reroll, sellCharm, type ShopState } from './shop';
-import { cards } from './testHelpers';
 
 const fixedShop = (): ShopState => ({
   items: [
-    { kind: 'charm', defId: 'beer-jug', cost: 4, sold: false },
-    { kind: 'scroll', defId: 'scroll-Pair', cost: 4, sold: false },
+    { defId: 'beer-jug', cost: 4, sold: false },
+    { defId: 'twin-mirror', cost: 4, sold: false },
+    { defId: 'fire-ring', cost: 4, sold: false },
   ],
-  packs: [{ kind: 'cards', cost: 4, sold: false }],
+  packs: [{ cost: 4, sold: false }],
   rerolls: 0,
 });
 
-describe('shop', () => {
-  it('generates 2 items and 2 packs', () => {
+describe('shop (charms only)', () => {
+  it('generates 3 charm items and 1 charm pack', () => {
     const shop = generateShop();
-    expect(shop.items).toHaveLength(2);
-    expect(shop.packs).toHaveLength(2);
+    expect(shop.items).toHaveLength(3);
+    expect(shop.packs).toHaveLength(1);
   });
 
   it('buys a charm and deducts money', () => {
@@ -38,17 +37,11 @@ describe('shop', () => {
   it('refuses a 6th charm', () => {
     let run = { ...newRun(), money: 100 };
     for (let i = 0; i < 5; i++) {
-      const r = addChoice(run, { kind: 'charm', defId: 'beer-jug' });
+      const r = addChoice(run, { defId: 'beer-jug' });
       if (!r.ok) throw new Error(r.reason);
       run = r.run;
     }
-    expect(addChoice(run, { kind: 'charm', defId: 'beer-jug' }).ok).toBe(false);
-  });
-
-  it('a scroll levels up its hand', () => {
-    const r = buyItem({ ...newRun(), money: 10 }, fixedShop(), 1);
-    if (!r.ok) throw new Error(r.reason);
-    expect(r.run.handLevels.Pair).toBe(2);
+    expect(addChoice(run, { defId: 'beer-jug' }).ok).toBe(false);
   });
 
   it('sells a charm for half price', () => {
@@ -58,7 +51,7 @@ describe('shop', () => {
     expect(sold.charms).toHaveLength(0);
   });
 
-  it('packs offer 3 choices; rerolls cost more each time', () => {
+  it('charm pack offers 3 charm choices; rerolls cost more each time', () => {
     const p = buyPack({ ...newRun(), money: 10 }, fixedShop(), 0);
     if (!p.ok) throw new Error(p.reason);
     expect(p.choices).toHaveLength(3);
@@ -72,20 +65,3 @@ describe('shop', () => {
     expect(r2.run.money).toBe(9);
   });
 });
-
-describe('potions', () => {
-  it('dye recolours to the leftmost target suit', () => {
-    const hand = cards('2h 5s 9c');
-    const out = getPotion('dye')!.apply(hand, [hand[0], hand[1]]);
-    expect(out.map((c) => c.suit)).toEqual(['hearts', 'hearts', 'clubs']);
-  });
-
-  it('growth caps at ace; dissolve removes; gold/flame enhance', () => {
-    const hand = cards('Ah 5s');
-    expect(getPotion('growth')!.apply(hand, [hand[0], hand[1]]).map((c) => c.rank)).toEqual([14, 6]);
-    expect(getPotion('dissolve')!.apply(hand, [hand[0]])).toHaveLength(1);
-    expect(getPotion('gold')!.apply(hand, [hand[1]])[1].enhancement).toBe('gold');
-    expect(getPotion('flame')!.apply(hand, [hand[1]])[1].enhancement).toBe('fire');
-  });
-});
-

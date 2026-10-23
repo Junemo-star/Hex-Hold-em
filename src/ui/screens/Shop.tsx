@@ -1,19 +1,17 @@
 import { useState } from 'react';
-import { MAX_POTIONS, moveCharm, type RunState } from '../../engine/run';
-import { getPotion } from '../../engine/potions';
+import { moveCharm, type RunState } from '../../engine/run';
 import {
   addChoice,
   buyItem,
   buyPack,
-  describeItem,
+  describeCharm,
   rerollCost,
   reroll,
   sellCharm,
   type PackChoice,
-  type PackKind,
   type ShopState,
 } from '../../engine/shop';
-import { CardView } from '../components/CardView';
+import { ArtSlot } from '../components/ArtSlot';
 import { CharmBar } from '../components/CharmBar';
 
 interface Props {
@@ -22,13 +20,6 @@ interface Props {
   onChange: (run: RunState, shop: ShopState) => void;
   onLeave: () => void;
 }
-
-const PACK_LABEL: Record<PackKind, string> = {
-  charm: '🎁 ซองเครื่องราง',
-  potion: '🧪 ซองยาเวท',
-  scroll: '📚 ซองคัมภีร์',
-  cards: '🃏 ซองไพ่',
-};
 
 export function Shop({ run, shop, onChange, onLeave }: Props) {
   const [message, setMessage] = useState('');
@@ -67,18 +58,20 @@ export function Shop({ run, shop, onChange, onLeave }: Props) {
   return (
     <div className="screen">
       <header className="topbar">
-        <div className="blind-name">🛒 ร้านค้าพ่อค้าเวท</div>
+        <div className="blind-name">🛒 ร้านค้าเครื่องรางเวท</div>
         <div className="round-score"><span>เงิน</span><strong>${run.money}</strong></div>
       </header>
 
       <section>
-        <h3 className="section-title">สินค้า</h3>
+        <h3 className="section-title">เครื่องรางวางขาย</h3>
         <div className="shop-row">
           {shop.items.map((item, i) => {
-            const d = describeItem(item.kind, item.defId);
+            const d = describeCharm(item.defId);
             return (
-              <div key={i} className={`shop-item ${item.sold ? 'sold' : ''}`}>
-                <div className="shop-emoji">{d.emoji}</div>
+              <div key={i} className={`shop-item ${d.rarity} ${item.sold ? 'sold' : ''}`}>
+                <div className="shop-emoji">
+                  <ArtSlot category="charms" id={item.defId} emoji={d.emoji} alt={d.name} />
+                </div>
                 <div className="shop-name">{d.name}</div>
                 <div className="shop-desc">{d.description}</div>
                 <button className="btn play small-buy" disabled={item.sold} onClick={() => buy(i)}>
@@ -89,15 +82,16 @@ export function Shop({ run, shop, onChange, onLeave }: Props) {
           })}
           {shop.packs.map((offer, i) => (
             <div key={`p${i}`} className={`shop-item pack ${offer.sold ? 'sold' : ''}`}>
-              <div className="shop-name">{PACK_LABEL[offer.kind]}</div>
-              <div className="shop-desc">เปิดแล้วเลือก 1 จาก 3</div>
+              <div className="shop-emoji">🎁</div>
+              <div className="shop-name">ซองสุ่มเครื่องราง</div>
+              <div className="shop-desc">เปิดสุ่มเครื่องราง 3 ชิ้น เลือกเก็บ 1 ชิ้น</div>
               <button className="btn play small-buy" disabled={offer.sold} onClick={() => openPackAt(i)}>
                 {offer.sold ? 'ขายแล้ว' : `ซื้อ $${offer.cost}`}
               </button>
             </div>
           ))}
         </div>
-        <div className="center">
+        <div className="center" style={{ marginTop: 12 }}>
           <button className="btn small" onClick={doReroll}>🎲 Reroll ${rerollCost(shop)}</button>
         </div>
       </section>
@@ -113,13 +107,6 @@ export function Shop({ run, shop, onChange, onLeave }: Props) {
         />
       </section>
 
-      <section className="owned-potions">
-        ยา ({run.potions.length}/{MAX_POTIONS}):{' '}
-        {run.potions.length === 0
-          ? 'ไม่มี'
-          : run.potions.map((id, i) => <span key={i} className="tag">{getPotion(id)?.emoji} {getPotion(id)?.name}</span>)}
-      </section>
-
       <div className="center">
         <button className="btn play" onClick={onLeave}>ออกจากร้าน →</button>
       </div>
@@ -127,21 +114,15 @@ export function Shop({ run, shop, onChange, onLeave }: Props) {
       {pack && (
         <div className="overlay">
           <div className="modal wide">
-            <h2>เลือก 1 อย่าง</h2>
+            <h2>เลือกเครื่องราง 1 ชิ้น</h2>
             <div className="shop-row">
               {pack.map((choice, i) => {
-                if (choice.kind === 'card') {
-                  return (
-                    <div key={i} className="shop-item clickable" onClick={() => choose(choice)}>
-                      <CardView card={choice.card} />
-                      <div className="shop-desc">เพิ่มเข้าสำรับถาวร</div>
-                    </div>
-                  );
-                }
-                const d = describeItem(choice.kind, choice.defId);
+                const d = describeCharm(choice.defId);
                 return (
-                  <div key={i} className="shop-item clickable" onClick={() => choose(choice)}>
-                    <div className="shop-emoji">{d.emoji}</div>
+                  <div key={i} className={`shop-item clickable ${d.rarity}`} onClick={() => choose(choice)}>
+                    <div className="shop-emoji">
+                      <ArtSlot category="charms" id={choice.defId} emoji={d.emoji} alt={d.name} />
+                    </div>
                     <div className="shop-name">{d.name}</div>
                     <div className="shop-desc">{d.description}</div>
                   </div>
@@ -156,4 +137,3 @@ export function Shop({ run, shop, onChange, onLeave }: Props) {
     </div>
   );
 }
-

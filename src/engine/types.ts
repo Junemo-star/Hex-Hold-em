@@ -4,14 +4,12 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 /** 2-10, 11=J, 12=Q, 13=K, 14=A */
 export type Rank = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 
-export type Enhancement = 'gold' | 'fire';
-
 export interface Card {
-  /** Stable identity. Does not change when a potion alters suit/rank. */
   id: string;
   rank: Rank;
   suit: Suit;
-  enhancement?: Enhancement;
+  /** True when cursed by the Mist Sisters to be face-down in hand */
+  faceDown?: boolean;
 }
 
 export type HandType =
@@ -33,7 +31,7 @@ export interface HandResult {
 
 /** One animated step of the scoring pipeline. chips/mult are running totals AFTER the step. */
 export interface ScoreStep {
-  kind: 'hand' | 'card' | 'charm';
+  kind: 'hand' | 'card' | 'charm' | 'curse';
   label: string;
   cardId?: string;
   charmIndex?: number;
@@ -56,6 +54,6 @@ export interface ScoreResult {
   money: number;
   /** charms with their updated persistent counters */
   charms: CharmInstance[];
-  /** ids of cards that burned up after scoring */
-  burned: string[];
+  /** true if a boss curse nullified the entire hand score */
+  nullified?: boolean;
 }
