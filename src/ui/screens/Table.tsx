@@ -5,6 +5,7 @@ import { draw, shuffle, sortCards } from '../../engine/deck';
 import { evaluateHand } from '../../engine/handEval';
 import { moveCharm, type RunState } from '../../engine/run';
 import { handBase, scoreHand } from '../../engine/scoring';
+import type { GameSpeed } from '../../engine/storage';
 import type { Card, HandType, ScoreResult, ScoreStep } from '../../engine/types';
 import { CardView } from '../components/CardView';
 import { CharmBar } from '../components/CharmBar';
@@ -22,6 +23,7 @@ export interface TableResult {
   /** net money change at the table (Lucky Coin minus Baron Crimson's discard tax) */
   bonusMoney: number;
   charms: CharmInstance[];
+  bestHand: number;
 }
 
 interface TableProps {
@@ -29,6 +31,8 @@ interface TableProps {
   target: number;
   run: RunState;
   dealer?: DealerDef;
+  speed: GameSpeed;
+  onChangeSpeed: (speed: GameSpeed) => void;
   onFinish: (result: TableResult) => void;
 }
 
@@ -44,7 +48,15 @@ function maybeFlipOneCard(cards: Card[], active: boolean): Card[] {
   return cleared.map((c, i) => (i === idx ? { ...c, faceDown: true } : c));
 }
 
-export function Table({ title, target: initialTarget, run, dealer, onFinish }: TableProps) {
+export function Table({
+  title,
+  target: initialTarget,
+  run,
+  dealer,
+  speed,
+  onChangeSpeed,
+  onFinish,
+}: TableProps) {
   const handSize = BASE_HAND_SIZE + (dealer?.handSizeDelta ?? 0);
   const [currentTarget, setCurrentTarget] = useState(initialTarget);
   const [bossPhase, setBossPhase] = useState<1 | 2>(1);
@@ -59,7 +71,6 @@ export function Table({ title, target: initialTarget, run, dealer, onFinish }: T
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [sortBy, setSortBy] = useState<'rank' | 'suit'>('rank');
-  const [speed, setSpeed] = useState<1 | 2 | 4>(1);
   const [live, setLive] = useState<{ chips: number; mult: number; label: string } | null>(null);
   const [activeCard, setActiveCard] = useState<string | null>(null);
   const [activeCharm, setActiveCharm] = useState<number | null>(null);
@@ -71,6 +82,7 @@ export function Table({ title, target: initialTarget, run, dealer, onFinish }: T
   speedRef.current = speed;
   const floatKey = useRef(0);
   const bonusRef = useRef(0);
+  const bestHandRef = useRef(0);
 
   function triggerShake() {
     setShaking(true);
@@ -230,6 +242,9 @@ export function Table({ title, target: initialTarget, run, dealer, onFinish }: T
     }
     setCharms(nextCharms);
     bonusRef.current += result.money;
+    if (result.total > bestHandRef.current) {
+      bestHandRef.current = result.total;
+    }
 
     const newScore = score + result.total;
     setScore(newScore);
@@ -293,6 +308,7 @@ export function Table({ title, target: initialTarget, run, dealer, onFinish }: T
       handsLeft,
       bonusMoney: bonusRef.current,
       charms,
+      bestHand: bestHandRef.current,
     });
   }
 
@@ -386,7 +402,14 @@ export function Table({ title, target: initialTarget, run, dealer, onFinish }: T
           </div>
           <div className="speed">
             {([1, 2, 4] as const).map((s) => (
-              <button key={s} className="btn small" disabled={speed === s} onClick={() => setSpeed(s)}>{s}x</button>
+              <button
+                key={s}
+                className="btn small"
+                disabled={speed === s}
+                onClick={() => onChangeSpeed(s)}
+              >
+                {s}x
+              </button>
             ))}
           </div>
         </div>

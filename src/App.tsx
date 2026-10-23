@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getDealerForFloor } from './engine/dealers';
 import {
   advance,
@@ -11,6 +11,16 @@ import {
   type RunState,
 } from './engine/run';
 import { generateShop, type ShopState } from './engine/shop';
+import {
+  loadSavedRun,
+  loadSpeed,
+  loadStats,
+  saveRun,
+  saveSpeed,
+  updateStats,
+  type GameSpeed,
+  type PlayerStats,
+} from './engine/storage';
 import { Cashout } from './ui/screens/Cashout';
 import { EndScreen } from './ui/screens/EndScreen';
 import { FloorMap } from './ui/screens/FloorMap';
@@ -25,13 +35,29 @@ type Screen =
   | { name: 'end'; victory: boolean };
 
 export function App() {
-  const [run, setRun] = useState<RunState>(newRun);
+  const [run, setRun] = useState<RunState>(() => loadSavedRun() ?? newRun());
+  const [stats, setStats] = useState<PlayerStats>(() => loadStats());
+  const [speed, setSpeed] = useState<GameSpeed>(() => loadSpeed());
   const [screen, setScreen] = useState<Screen>({ name: 'map' });
   const [shop, setShop] = useState<ShopState>(() => generateShop());
   const [attempt, setAttempt] = useState(0);
 
+  function handleChangeSpeed(nextSpeed: GameSpeed) {
+    setSpeed(nextSpeed);
+    saveSpeed(nextSpeed);
+  }
+
+  useEffect(() => {
+    if (screen.name !== 'end' || screen.victory) {
+      saveRun(run);
+    }
+  }, [run, screen]);
+
   function restart() {
-    setRun(newRun());
+    const fresh = newRun();
+    saveRun(fresh);
+    setRun(fresh);
+    setStats(updateStats((s) => ({ ...s, runsPlayed: s.runsPlayed + 1 })));
     setScreen({ name: 'map' });
   }
 
@@ -41,7 +67,17 @@ export function App() {
   }
 
   function finishTable(result: TableResult) {
+    setStats(
+      updateStats((s) => ({
+        ...s,
+        highestFloor: Math.max(s.highestFloor, run.floor),
+        bestHandScore: Math.max(s.bestHandScore, result.bestHand),
+        tablesWon: result.won ? s.tablesWon + 1 : s.tablesWon,
+      })),
+    );
+
     if (!result.won) {
+      saveRun(null);
       setScreen({ name: 'end', victory: false });
       return;
     }
@@ -54,31 +90,49 @@ export function App() {
     setScreen({ name: 'cashout', payout });
   }
 
-  /** After cashout: beating the floor 8 boss ends the game, otherwise visit the shop. */
+  /** After cashout: beating the floor 8 boss shows Victory (with Endless option), otherwise visit the shop. */
   function leaveCashout() {
     const next = advance(run);
+    setRun(next.run);
+    setStats(
+      updateStats((s) => ({
+        ...s,
+        victories: next.victory ? s.victories + 1 : s.victories,
+        highestFloor: Math.max(s.highestFloor, next.run.floor),
+      })),
+    );
     if (next.victory) {
       setScreen({ name: 'end', victory: true });
       return;
     }
-    setRun(next.run);
+    setShop(generateShop());
+    setScreen({ name: 'shop' });
+  }
+
+  function continueEndless() {
     setShop(generateShop());
     setScreen({ name: 'shop' });
   }
 
   switch (screen.name) {
     case 'map':
-      return <FloorMap run={run} onEnter={enterTable} />;
+      return <FloorMap run={run} stats={stats} onEnter={enterTable} onResetRun={restart} />;
     case 'table': {
       const kind = stageKind(run);
       const dealer = kind === 'boss' ? getDealerForFloor(run.floor) : undefined;
       return (
         <Table
           key={screen.attempt}
-          title={dealer ? `${dealer.emoji} ${dealer.name} · ชั้น ${run.floor}` : `${STAGE_NAME[kind]} · ชั้น ${run.floor}`}
+          title={
+            dealer
+              ? `${dealer.emoji} ${dealer.name} · ชั้น ${run.floor}`
+              : `${STAGE_NAME[kind]} · ชั้น ${run.floor}`
+          }
           target={targetFor(run.floor, kind)}
           run={run}
           dealer={dealer}
+          speed={speed}
+          onChangeSpeed={handleChangeSpeed}
           onFinish={finishTable}
         />
       );
@@ -98,6 +152,14 @@ export function App() {
         />
       );
     case 'end':
-      return <EndScreen victory={screen.victory} floor={run.floor} onRestart={restart} />;
+      return (
+        <EndScreen
+          victory={screen.victory}
+          floor={run.floor}
+          stats={stats}
+          onRestart={restart}
+          onEndless={screen.victory ? continueEndless : undefined}
+        />
+      );
   }
 }

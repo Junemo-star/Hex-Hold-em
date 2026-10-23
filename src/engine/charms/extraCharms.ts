@@ -1,6 +1,13 @@
 import type { HandType } from '../types';
 import type { CharmDef } from './types';
 
+const CONTAINS_PAIR: HandType[] = [
+  'Pair',
+  'Two Pair',
+  'Three of a Kind',
+  'Full House',
+  'Four of a Kind',
+];
 const CONTAINS_TRIPS: HandType[] = ['Three of a Kind', 'Full House', 'Four of a Kind'];
 
 export const jesterHat: CharmDef = {
@@ -56,6 +63,56 @@ export const trinityAmulet: CharmDef = {
   },
 };
 
+export const copperRing: CharmDef = {
+  id: 'copper-ring',
+  name: 'แหวนทองแดง',
+  emoji: '🥉',
+  rarity: 'common',
+  cost: 4,
+  description: 'ไพ่แต้มต่ำ (2, 3, 4, 5) ที่นับแต้ม +20 Chips และ +2 Mult',
+  hooks: {
+    onCardScored: ({ card }) =>
+      card && card.rank >= 2 && card.rank <= 5 ? { chips: 20, mult: 2 } : undefined,
+  },
+};
+
+export const twoPairGloves: CharmDef = {
+  id: 'two-pair-gloves',
+  name: 'ถุงมือคู่แฝด',
+  emoji: '🧤',
+  rarity: 'common',
+  cost: 5,
+  description: 'ถ้าเล่น Two Pair หรือ Full House: +50 Chips และ +6 Mult',
+  hooks: {
+    onHandScored: ({ hand }) =>
+      hand === 'Two Pair' || hand === 'Full House' ? { chips: 50, mult: 6 } : undefined,
+  },
+};
+
+export const soloMask: CharmDef = {
+  id: 'solo-mask',
+  name: 'หน้ากากผู้โดดเดี่ยว',
+  emoji: '🎭',
+  rarity: 'common',
+  cost: 5,
+  description: 'ถ้าเล่นไพ่เพียง 1 ใบ: +50 Chips และ +10 Mult',
+  hooks: {
+    onHandScored: ({ played }) => (played.length === 1 ? { chips: 50, mult: 10 } : undefined),
+  },
+};
+
+export const fullHandBanner: CharmDef = {
+  id: 'full-hand-banner',
+  name: 'ธงรบเต็มทัพ',
+  emoji: '🚩',
+  rarity: 'common',
+  cost: 5,
+  description: 'ถ้าเล่นไพ่ครบ 5 ใบ: +60 Chips',
+  hooks: {
+    onHandScored: ({ played }) => (played.length === 5 ? { chips: 60 } : undefined),
+  },
+};
+
 export const flushPrism: CharmDef = {
   id: 'flush-prism',
   name: 'ปริซึมสายรุ้ง',
@@ -106,6 +163,54 @@ export const ironShield: CharmDef = {
   },
 };
 
+export const sevenClover: CharmDef = {
+  id: 'seven-clover',
+  name: 'ใบโคลเวอร์เจ็ดแฉก',
+  emoji: '🍀',
+  rarity: 'uncommon',
+  cost: 6,
+  description: 'ไพ่เลข 7 ที่นับแต้ม +77 Chips และ +7 Mult',
+  hooks: {
+    onCardScored: ({ card }) => (card?.rank === 7 ? { chips: 77, mult: 7 } : undefined),
+  },
+};
+
+export const midasHand: CharmDef = {
+  id: 'midas-hand',
+  name: 'หัตถ์ไมดาส',
+  emoji: '✋',
+  rarity: 'uncommon',
+  cost: 6,
+  description: 'ได้ +$2 ทุกครั้งที่ไพ่ A ถูกนับแต้ม',
+  hooks: {
+    onCardScored: ({ card }) => (card?.rank === 14 ? { money: 2 } : undefined),
+  },
+};
+
+export const sniperMonocle: CharmDef = {
+  id: 'sniper-monocle',
+  name: 'แว่นตาเดียวแม่นปืน',
+  emoji: '🧐',
+  rarity: 'uncommon',
+  cost: 6,
+  description: 'ถ้าเล่น High Card: +80 Chips และ +8 Mult',
+  hooks: {
+    onHandScored: ({ hand }) => (hand === 'High Card' ? { chips: 80, mult: 8 } : undefined),
+  },
+};
+
+export const fullHouseCauldron: CharmDef = {
+  id: 'full-house-cauldron',
+  name: 'หม้อต้มฟูลเฮาส์',
+  emoji: '🍲',
+  rarity: 'uncommon',
+  cost: 7,
+  description: 'ถ้าเล่น Full House: ×2 Mult',
+  hooks: {
+    onHandScored: ({ hand }) => (hand === 'Full House' ? { xMult: 2 } : undefined),
+  },
+};
+
 export const lastHourglass: CharmDef = {
   id: 'last-hourglass',
   name: 'นาฬิกาทรายสุดท้าย',
@@ -146,6 +251,45 @@ export const bloodChalice: CharmDef = {
   },
 };
 
+export const pairAnvil: CharmDef = {
+  id: 'pair-anvil',
+  name: 'ทั่งตีเหล็กคู่',
+  emoji: '🔨',
+  rarity: 'rare',
+  cost: 8,
+  description: 'ทุกครั้งที่เล่นมือที่มี Pair สะสม +15 Chips ถาวร (ให้ Chips ที่สะสมไว้ทุกมือ)',
+  hooks: {
+    onHandScored: ({ hand, counter }) => {
+      const next = counter + (CONTAINS_PAIR.includes(hand) ? 15 : 0);
+      return next > 0 ? { chips: next, counter: next } : undefined;
+    },
+  },
+};
+
+export const assassinCloak: CharmDef = {
+  id: 'assassin-cloak',
+  name: 'ผ้าคลุมนักฆ่า',
+  emoji: '🥷',
+  rarity: 'rare',
+  cost: 8,
+  description: '×2 Mult ถ้าเล่นไพ่ไม่เกิน 2 ใบ',
+  hooks: {
+    onHandScored: ({ played }) => (played.length <= 2 ? { xMult: 2 } : undefined),
+  },
+};
+
+export const fourHorsemen: CharmDef = {
+  id: 'four-horsemen',
+  name: 'ตราจตุรอาชา',
+  emoji: '🐎',
+  rarity: 'rare',
+  cost: 9,
+  description: 'ถ้าเล่น Four of a Kind: ×3.5 Mult',
+  hooks: {
+    onHandScored: ({ hand }) => (hand === 'Four of a Kind' ? { xMult: 3.5 } : undefined),
+  },
+};
+
 export const philosopherStone: CharmDef = {
   id: 'philosopher-stone',
   name: 'ศิลาอาถรรพ์',
@@ -158,3 +302,14 @@ export const philosopherStone: CharmDef = {
   },
 };
 
+export const archmageStaff: CharmDef = {
+  id: 'archmage-staff',
+  name: 'คทาจอมมหาเวท',
+  emoji: '🪄',
+  rarity: 'legendary',
+  cost: 20,
+  description: 'ไพ่ทุกใบที่ถูกนับแต้ม ×1.25 Mult',
+  hooks: {
+    onCardScored: () => ({ xMult: 1.25 }),
+  },
+};

@@ -19,13 +19,15 @@ export const START_MONEY = 4;
 export const MAX_CHARMS = 5;
 
 export interface RunState {
-  /** 1..FLOORS */
+  /** 1..FLOORS (or 9+ in Endless Mode) */
   floor: number;
   /** 0..2 index into STAGES */
   stage: number;
   money: number;
   deck: Card[];
   charms: CharmInstance[];
+  /** true once the player has cleared Floor 8 and entered Endless Mode */
+  endless?: boolean;
 }
 
 export interface Payout {
@@ -44,6 +46,7 @@ export function newRun(): RunState {
     money: START_MONEY,
     deck: createDeck(),
     charms: [],
+    endless: false,
   };
 }
 
@@ -52,7 +55,11 @@ export function stageKind(run: RunState): StageKind {
 }
 
 export function targetFor(floor: number, kind: StageKind): number {
-  return Math.round(BASE_TARGETS[floor - 1] * STAGE_MULT[kind]);
+  const base =
+    floor <= BASE_TARGETS.length
+      ? BASE_TARGETS[floor - 1]
+      : Math.round(BASE_TARGETS[BASE_TARGETS.length - 1] * Math.pow(1.85, floor - BASE_TARGETS.length));
+  return Math.round(base * STAGE_MULT[kind]);
 }
 
 /** Money earned for beating a table: base + $1 per hand left + $1 per $5 held (max $5) + bonus. */
@@ -63,11 +70,25 @@ export function payoutFor(run: RunState, handsLeft: number, bonus = 0): Payout {
   return { base, handsBonus, interest, bonus, total: base + handsBonus + interest + bonus };
 }
 
-/** Advance to the next table. `victory` is true after beating the floor 8 boss. */
+/**
+ * Advance to the next table.
+ * `victory` is true right when beating the Floor 8 boss for the first time;
+ * `run` still advances to Floor 9 so the player can opt into Endless Mode.
+ */
 export function advance(run: RunState): { run: RunState; victory: boolean } {
-  if (run.stage < STAGES.length - 1) return { run: { ...run, stage: run.stage + 1 }, victory: false };
-  if (run.floor >= FLOORS) return { run, victory: true };
-  return { run: { ...run, floor: run.floor + 1, stage: 0 }, victory: false };
+  if (run.stage < STAGES.length - 1) {
+    return { run: { ...run, stage: run.stage + 1 }, victory: false };
+  }
+  const justBeatFloor8 = run.floor === FLOORS && !run.endless;
+  return {
+    run: {
+      ...run,
+      floor: run.floor + 1,
+      stage: 0,
+      endless: run.endless || justBeatFloor8,
+    },
+    victory: justBeatFloor8,
+  };
 }
 
 /** Swap the charm at index i with its neighbour (order matters for scoring). */

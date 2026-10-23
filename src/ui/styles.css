@@ -236,3 +236,10 @@ body {
   object-fit: contain;
   image-rendering: pixelated;
 }
+
+/* ---- Phase 6: Stats bar & Endless mode ---- */
+.stats-bar {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  margin-top: 4px;
+}

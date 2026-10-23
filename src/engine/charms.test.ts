@@ -6,8 +6,8 @@ import { cards } from './testHelpers';
 const charm = (defId: string, counter = 0) => ({ defId, counter });
 
 describe('charm scoring', () => {
-  it('registers all 24 charms', () => {
-    expect(CHARMS).toHaveLength(24);
+  it('registers all 36 charms', () => {
+    expect(CHARMS).toHaveLength(36);
   });
 
   it('beer jug adds +4 mult', () => {
