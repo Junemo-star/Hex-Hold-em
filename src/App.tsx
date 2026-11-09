@@ -90,7 +90,6 @@ export function App() {
     setScreen({ name: 'cashout', payout });
   }
 
-  /** After cashout: beating the floor 8 boss shows Victory (with Endless option), otherwise visit the shop. */
   function leaveCashout() {
     const next = advance(run);
     setRun(next.run);
@@ -116,7 +115,17 @@ export function App() {
 
   switch (screen.name) {
     case 'map':
-      return <FloorMap run={run} stats={stats} onEnter={enterTable} onResetRun={restart} />;
+      return (
+        <FloorMap
+          run={run}
+          stats={stats}
+          speed={speed}
+          onChangeSpeed={handleChangeSpeed}
+          onChangeRun={setRun}
+          onEnter={enterTable}
+          onResetRun={restart}
+        />
+      );
     case 'table': {
       const kind = stageKind(run);
       const dealer = kind === 'boss' ? getDealerForFloor(run.floor) : undefined;
@@ -138,12 +147,22 @@ export function App() {
       );
     }
     case 'cashout':
-      return <Cashout payout={screen.payout} money={run.money} onContinue={leaveCashout} />;
+      return (
+        <Cashout
+          payout={screen.payout}
+          run={run}
+          speed={speed}
+          onChangeSpeed={handleChangeSpeed}
+          onContinue={leaveCashout}
+        />
+      );
     case 'shop':
       return (
         <Shop
           run={run}
           shop={shop}
+          speed={speed}
+          onChangeSpeed={handleChangeSpeed}
           onChange={(r, s) => {
             setRun(r);
             setShop(s);
@@ -155,8 +174,10 @@ export function App() {
       return (
         <EndScreen
           victory={screen.victory}
-          floor={run.floor}
+          run={run}
           stats={stats}
+          speed={speed}
+          onChangeSpeed={handleChangeSpeed}
           onRestart={restart}
           onEndless={screen.victory ? continueEndless : undefined}
         />

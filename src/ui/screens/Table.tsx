@@ -7,9 +7,10 @@ import { moveCharm, type RunState } from '../../engine/run';
 import { handBase, scoreHand } from '../../engine/scoring';
 import type { GameSpeed } from '../../engine/storage';
 import type { Card, HandType, ScoreResult, ScoreStep } from '../../engine/types';
-import { CardView } from '../components/CardView';
+import { CardView, type CardFloater } from '../components/CardView';
 import { CharmBar } from '../components/CharmBar';
 import { DealerBanner } from '../components/DealerBanner';
+import { HudSidebar } from '../components/HudSidebar';
 import { playBlip, playCurseSound, playVictorySound } from '../fx/sound';
 
 const BASE_HAND_SIZE = 8;
@@ -37,7 +38,6 @@ interface TableProps {
 }
 
 type Phase = 'idle' | 'scoring' | 'won' | 'lost';
-type Floater = { key: number; text: string; kind: 'chips' | 'mult' | 'money' | 'curse'; x: number };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -46,6 +46,30 @@ function maybeFlipOneCard(cards: Card[], active: boolean): Card[] {
   if (!active || cleared.length === 0) return cleared;
   const idx = Math.floor(Math.random() * cleared.length);
   return cleared.map((c, i) => (i === idx ? { ...c, faceDown: true } : c));
+}
+
+function stepToFloater(step: ScoreStep): CardFloater | null {
+  if (step.kind === 'curse') return { text: step.label, kind: 'curse' };
+  const parts: string[] = [];
+  let kind: CardFloater['kind'] = 'chips';
+  if (step.addChips) {
+    parts.push(`+${step.addChips}`);
+    kind = 'chips';
+  }
+  if (step.addMult) {
+    parts.push(`+${step.addMult} Mult`);
+    kind = 'mult';
+  }
+  if (step.xMult) {
+    parts.push(`X${step.xMult}`);
+    kind = 'mult';
+  }
+  if (step.money) {
+    parts.push(`+$${step.money}`);
+    if (!step.addChips && !step.addMult && !step.xMult) kind = 'money';
+  }
+  if (parts.length === 0) return null;
+  return { text: parts.join(' '), kind };
 }
 
 export function Table({
@@ -62,6 +86,7 @@ export function Table({
   const [bossPhase, setBossPhase] = useState<1 | 2>(1);
   const [drawPile, setDrawPile] = useState<Card[]>([]);
   const [hand, setHand] = useState<Card[]>([]);
+  const [playedStage, setPlayedStage] = useState<{ cards: Card[]; scoringIds: Set<string> } | null>(null);
   const [charms, setCharms] = useState<CharmInstance[]>(run.charms);
   const [selected, setSelected] = useState<string[]>([]);
   const [handsLeft, setHandsLeft] = useState(START_HANDS);
@@ -69,20 +94,27 @@ export function Table({
   const [playedHandTypes, setPlayedHandTypes] = useState<HandType[]>([]);
   const [discardsLeft, setDiscardsLeft] = useState(START_DISCARDS);
   const [score, setScore] = useState(0);
+  const [bonusMoney, setBonusMoney] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [sortBy, setSortBy] = useState<'rank' | 'suit'>('rank');
   const [live, setLive] = useState<{ chips: number; mult: number; label: string } | null>(null);
   const [activeCard, setActiveCard] = useState<string | null>(null);
   const [activeCharm, setActiveCharm] = useState<number | null>(null);
-  const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [cardFloater, setCardFloater] = useState<({ cardId: string } & CardFloater) | null>(null);
+  const [charmFloater, setCharmFloater] = useState<({ index: number } & CardFloater) | null>(null);
   const [speech, setSpeech] = useState<string>(dealer?.dialogue.intro ?? '');
   const [shaking, setShaking] = useState(false);
   const [popping, setPopping] = useState(false);
   const speedRef = useRef(speed);
   speedRef.current = speed;
-  const floatKey = useRef(0);
   const bonusRef = useRef(0);
   const bestHandRef = useRef(0);
+
+  function addBonusMoney(delta: number) {
+    const next = Math.max(-run.money, bonusRef.current + delta);
+    bonusRef.current = next;
+    setBonusMoney(next);
+  }
 
   function triggerShake() {
     setShaking(true);
@@ -119,6 +151,7 @@ export function Table({
     setDrawPile(rest);
     setHand(sortCards(drawn, 'rank'));
     bonusRef.current = 0;
+    setBonusMoney(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -146,11 +179,10 @@ export function Table({
     );
   }
 
-  function refill(removeIds: string[], nextHandsPlayed: number) {
-    const remaining = hand.filter((c) => !removeIds.includes(c.id));
-    const { drawn, rest } = draw(drawPile, handSize - remaining.length);
+  function refill(currentRemaining: Card[], nextHandsPlayed: number) {
+    const { drawn, rest } = draw(drawPile, handSize - currentRemaining.length);
     setDrawPile(rest);
-    const sorted = sortCards([...remaining, ...drawn], sortBy);
+    const sorted = sortCards([...currentRemaining, ...drawn], sortBy);
     const shouldFlip = Boolean(dealer?.flipCardAfterHand1 && nextHandsPlayed >= 1);
     setHand(maybeFlipOneCard(sorted, shouldFlip));
     setSelected([]);
@@ -160,45 +192,33 @@ export function Table({
     if (phase !== 'idle' || selected.length === 0 || discardsLeft === 0) return;
     setDiscardsLeft((d) => d - 1);
     if (dealer?.discardCost) {
-      bonusRef.current = Math.max(-run.money, bonusRef.current - dealer.discardCost);
+      addBonusMoney(-dealer.discardCost);
       setSpeech(dealer.dialogue.curse);
-      pushFloater(`-$${dealer.discardCost}`, 'curse', 0);
       playCurseSound();
       triggerShake();
     }
-    refill(selected, handsPlayed);
-  }
-
-  function pushFloater(text: string, kind: Floater['kind'], x: number) {
-    const key = floatKey.current++;
-    setFloaters((f) => [...f, { key, text, kind, x }]);
-    setTimeout(() => setFloaters((f) => f.filter((fl) => fl.key !== key)), 900);
-  }
-
-  function showFloaters(step: ScoreStep) {
-    if (step.kind === 'curse') {
-      pushFloater(step.label, 'curse', 0);
-      return;
-    }
-    const items: Array<[string, Floater['kind']]> = [];
-    if (step.addChips) items.push([`+${step.addChips}`, 'chips']);
-    if (step.addMult) items.push([`+${step.addMult} Mult`, 'mult']);
-    if (step.xMult) items.push([`X${step.xMult}`, 'mult']);
-    if (step.money) items.push([`+$${step.money}`, 'money']);
-    items.forEach(([text, kind], i) => pushFloater(text, kind, (i - (items.length - 1) / 2) * 90));
+    const remaining = hand.filter((c) => !selected.includes(c.id));
+    refill(remaining, handsPlayed);
   }
 
   async function play() {
     if (phase !== 'idle' || selected.length === 0 || handsLeft === 0) return;
     const played = selectedCards.map((c) => ({ ...c, faceDown: false }));
-    setHand((h) => h.map((c) => (selected.includes(c.id) ? { ...c, faceDown: false } : c)));
     const heldCards = hand.filter((c) => !selected.includes(c.id));
+    const { scoringIds } = evaluateHand(played);
+
+    // Move played cards from hand up into the Center Played Stage
+    setHand(heldCards);
+    setSelected([]);
+    setPlayedStage({ cards: played, scoringIds: new Set(scoringIds) });
 
     const result: ScoreResult = scoreHand(played, {
       charms,
       held: heldCards,
       discardsLeft,
       handsLeft,
+      money: Math.max(0, run.money + bonusRef.current),
+      deckRemaining: drawPile.length,
       disabledSuit,
       bannedHands,
       sealedCharmIndices: sealedIndices,
@@ -216,9 +236,25 @@ export function Table({
       setLive({ chips: step.chips, mult: step.mult, label: result.hand });
       setActiveCard(step.cardId ?? null);
       setActiveCharm(step.charmIndex ?? null);
-      showFloaters(step);
+
+      const fl = stepToFloater(step);
+      if (step.charmIndex !== undefined && fl) {
+        setCharmFloater({ index: step.charmIndex, ...fl });
+        setCardFloater(step.cardId ? { cardId: step.cardId, ...fl } : null);
+      } else if (step.cardId && fl) {
+        setCardFloater({ cardId: step.cardId, ...fl });
+        setCharmFloater(null);
+      } else {
+        setCardFloater(null);
+        setCharmFloater(null);
+      }
+
+      if (step.money) {
+        addBonusMoney(step.money);
+      }
+
       triggerPop();
-      if (step.xMult && step.xMult >= 2) triggerShake();
+      if (step.xMult && step.xMult >= 1.5) triggerShake();
       if (step.kind === 'curse') {
         playCurseSound();
       } else {
@@ -228,9 +264,11 @@ export function Table({
     }
     setActiveCard(null);
     setActiveCharm(null);
+    setCardFloater(null);
+    setCharmFloater(null);
     setLive({ chips: result.chips, mult: result.mult, label: result.hand });
     if (result.total >= currentTarget * 0.4) triggerShake();
-    await sleep(350 / speedRef.current);
+    await sleep(380 / speedRef.current);
 
     let nextCharms = result.charms;
     if (dealer?.shuffleCharmsEachHand && nextCharms.length > 1) {
@@ -239,7 +277,6 @@ export function Table({
       playCurseSound();
     }
     setCharms(nextCharms);
-    bonusRef.current += result.money;
     if (result.total > bestHandRef.current) {
       bestHandRef.current = result.total;
     }
@@ -277,11 +314,11 @@ export function Table({
       setSpeech(dealer.dialogue.curse);
       playCurseSound();
       triggerShake();
-      pushFloater('Phase 2! เป้าหมาย +50% (+2 Hands)', 'curse', 0);
     }
 
     setHandsLeft(newHands);
-    await sleep(500 / speedRef.current);
+    await sleep(450 / speedRef.current);
+    setPlayedStage(null);
 
     if (newScore >= activeTarget) {
       if (dealer) setSpeech(dealer.dialogue.playerWin);
@@ -295,7 +332,7 @@ export function Table({
       setPhase('lost');
       return;
     }
-    refill(played.map((c) => c.id), nextHandsPlayed);
+    refill(heldCards, nextHandsPlayed);
     setLive(null);
     setPhase('idle');
   }
@@ -312,7 +349,8 @@ export function Table({
 
   const shown = live ?? (preview ? { chips: preview.chips, mult: preview.mult, label: preview.type } : null);
   const canAct = phase === 'idle' && selected.length > 0;
-  const progressPct = Math.min(100, Math.round((score / Math.max(1, currentTarget)) * 100));
+  const isOverdrive =
+    score >= currentTarget || Boolean(live && live.chips * live.mult >= currentTarget * 0.5);
 
   const extraStatus = useMemo(() => {
     if (!dealer) return undefined;
@@ -320,90 +358,40 @@ export function Table({
     if (disabledSuit) parts.push('ไพ่ ♥ ถูกสาป (ไม่นับแต้ม)');
     if (sealedIndices.length > 0) parts.push('เครื่องรางช่องซ้ายสุดถูกผนึก');
     if (bannedHands.length > 0) parts.push(`มือต้องห้าม: ${bannedHands.join(', ')}`);
-    if (bossPhase === 2) parts.push('🔥 ร่างที่ 2 ของเจ้าของบ่อน!');
+    if (bossPhase === 2) parts.push('🔥 ร่างที่ 2 ของเจ้าของบ่อน (+50% เป้าหมาย)!');
     return parts.join(' · ') || undefined;
   }, [dealer, disabledSuit, sealedIndices, bannedHands, bossPhase]);
 
   return (
     <div className={`balatro-layout ${shaking ? 'screen-shake' : ''}`}>
-      {/* LEFT ARCADE SIDEBAR */}
-      <aside className="hud-sidebar">
-        <div className={`hud-blind-card ${dealer ? 'is-boss' : ''}`}>
-          <div className="hud-blind-header">{title}</div>
-          <div className="hud-target-label">ทำแต้มให้ถึงอย่างน้อย</div>
-          <div className="hud-target-value">{currentTarget.toLocaleString()}</div>
-          <div className="hud-progress-track">
-            <div className="hud-progress-fill" style={{ width: `${progressPct}%` }} />
-          </div>
-        </div>
+      <HudSidebar
+        headerTitle={title}
+        isBoss={Boolean(dealer)}
+        targetScore={currentTarget}
+        currentScore={score}
+        handLabel={shown?.label ?? 'เลือกไพ่ 1–5 ใบ'}
+        chips={shown?.chips ?? 0}
+        mult={shown?.mult ?? 0}
+        popping={popping}
+        overdrive={isOverdrive}
+        handsLeft={handsLeft}
+        discardsLeft={discardsLeft}
+        money={Math.max(0, run.money + bonusMoney)}
+        run={run}
+        deckCount={drawPile.length}
+        speed={speed}
+        onChangeSpeed={onChangeSpeed}
+      />
 
-        <div className="hud-round-score">
-          <span className="hud-label">แต้มสะสมในโต๊ะ</span>
-          <strong className="hud-score-num">{score.toLocaleString()}</strong>
-        </div>
-
-        <section className="scorebox">
-          <div className="hand-name">{shown?.label ?? 'เลือกไพ่ 1–5 ใบ'}</div>
-          <div className={`formula ${popping ? 'pop' : ''}`}>
-            <span className="chips">{shown?.chips ?? 0}</span>
-            <span className="times">×</span>
-            <span className="mult">{shown?.mult ?? 0}</span>
-          </div>
-          <div className="floaters">
-            {floaters.map((f) => (
-              <span key={f.key} className={`floater ${f.kind}`} style={{ marginLeft: f.x }}>
-                {f.text}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        <div className="hud-stats-grid">
-          <div className="hud-stat-box hands">
-            <span className="hud-stat-label">Hands</span>
-            <strong className="hud-stat-val">{handsLeft}</strong>
-          </div>
-          <div className="hud-stat-box discards">
-            <span className="hud-stat-label">Discards</span>
-            <strong className="hud-stat-val">{discardsLeft}</strong>
-          </div>
-          <div className="hud-stat-box money">
-            <span className="hud-stat-label">เงินทุน</span>
-            <strong className="hud-stat-val">${Math.max(0, run.money + bonusRef.current)}</strong>
-          </div>
-          <div className="hud-stat-box floor">
-            <span className="hud-stat-label">ชั้น / สำรับ</span>
-            <strong className="hud-stat-val">
-              {run.floor} · 🃏{drawPile.length}
-            </strong>
-          </div>
-        </div>
-
-        <div className="hud-Subcontrols">
-          <div className="speed">
-            <span className="sub-label">ความเร็ว</span>
-            {([1, 2, 4] as const).map((s) => (
-              <button
-                key={s}
-                className={`btn small ${speed === s ? 'active-pill' : ''}`}
-                disabled={speed === s}
-                onClick={() => onChangeSpeed(s)}
-              >
-                {s}x
-              </button>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* RIGHT MYSTIC FELT ARENA */}
       <main className="felt-arena">
         <div className="arcane-circle-watermark" aria-hidden="true" />
+        <div className="arcane-particles" aria-hidden="true" />
 
         <CharmBar
           charms={charms}
           activeIndex={activeCharm}
           sealedIndices={sealedIndices}
+          charmFloater={charmFloater}
           onMove={phase === 'idle' ? (i, dir) => setCharms((c) => moveCharm(c, i, dir)) : undefined}
         />
 
@@ -416,23 +404,68 @@ export function Table({
           />
         )}
 
+        {/* CENTER PLAYED-CARDS SCORING ZONE */}
+        <section className="played-center-zone">
+          {playedStage ? (
+            <div className="played-cards-row">
+              {playedStage.cards.map((c) => {
+                const isScoring = playedStage.scoringIds.has(c.id);
+                const fl = cardFloater && cardFloater.cardId === c.id ? cardFloater : null;
+                return (
+                  <CardView
+                    key={c.id}
+                    card={c}
+                    active={activeCard === c.id}
+                    dimmed={!isScoring}
+                    disabledSuit={Boolean(disabledSuit && c.suit === disabledSuit)}
+                    floater={fl}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="played-zone-placeholder">
+              <span>✧ พื้นที่แสดงไพ่และคำนวณคอมโบ ✧</span>
+            </div>
+          )}
+        </section>
+
+        {/* HAND & VISUAL 3D DECK STACK */}
         <section className="hand-stage">
           <div className="hand-selection-hint">
-            เลือกแล้ว {selected.length} / {MAX_SELECT} ใบ
+            {phase === 'scoring'
+              ? 'กำลังคำนวณแต้ม...'
+              : `ไพ่ในมือ (${hand.length} ใบ) · เลือกแล้ว ${selected.length} / ${MAX_SELECT} ใบ`}
           </div>
-          <div className="hand">
-            {hand.map((c, idx) => (
-              <CardView
-                key={c.id}
-                card={c}
-                index={idx}
-                total={hand.length}
-                selected={selected.includes(c.id)}
-                active={activeCard === c.id}
-                disabledSuit={Boolean(disabledSuit && c.suit === disabledSuit)}
-                onClick={() => toggle(c.id)}
-              />
-            ))}
+          <div className="hand-and-deck-row">
+            <div className="hand">
+              {hand.map((c, idx) => {
+                const fl = cardFloater && cardFloater.cardId === c.id ? cardFloater : null;
+                return (
+                  <CardView
+                    key={c.id}
+                    card={c}
+                    index={idx}
+                    total={hand.length}
+                    selected={selected.includes(c.id)}
+                    active={activeCard === c.id}
+                    disabledSuit={Boolean(disabledSuit && c.suit === disabledSuit)}
+                    floater={fl}
+                    onClick={() => toggle(c.id)}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="deck-pile" title={`ไพ่ที่เหลือในสำรับ ${drawPile.length} ใบ`}>
+              <div className="deck-stack-card layer-2" />
+              <div className="deck-stack-card layer-1" />
+              <div className="deck-stack-card top">
+                <span className="deck-rune">✦</span>
+                <strong className="deck-count">{drawPile.length}</strong>
+                <span className="deck-sub">สำรับ</span>
+              </div>
+            </div>
           </div>
         </section>
 

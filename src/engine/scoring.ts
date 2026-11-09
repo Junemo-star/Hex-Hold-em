@@ -1,6 +1,7 @@
 import { getCharm } from './charms';
-import type { CharmInstance, Effect } from './charms/types';
+import type { CharmDef, CharmInstance, Effect } from './charms/types';
 import { evaluateHand } from './handEval';
+import { MAX_CHARMS } from './run';
 import type { Card, HandType, ScoreResult, ScoreStep, Suit } from './types';
 
 interface HandBase {
@@ -36,6 +37,9 @@ export interface ScoreContext {
   held?: Card[];
   discardsLeft?: number;
   handsLeft?: number;
+  /** player's current money & remaining draw pile for Balatro meta charms */
+  money?: number;
+  deckRemaining?: number;
   /** Boss curse modifiers */
   disabledSuit?: Suit;
   bannedHands?: HandType[];
@@ -45,6 +49,27 @@ export interface ScoreContext {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 type StepMeta = Pick<ScoreStep, 'kind' | 'label'> & Partial<Pick<ScoreStep, 'cardId' | 'charmIndex'>>;
+
+/** Resolve Blueprint ('right') or Brainstorm ('leftmost') copy targets up to 2 hops. */
+function resolveCharmDef(
+  charms: CharmInstance[],
+  index: number,
+  sealedSet: Set<number>,
+): { def: CharmDef; targetIndex: number } | undefined {
+  let currIdx = index;
+  for (let hop = 0; hop < 3; hop++) {
+    if (sealedSet.has(currIdx)) return undefined;
+    const inst = charms[currIdx];
+    if (!inst) return undefined;
+    const def = getCharm(inst.defId);
+    if (!def) return undefined;
+    if (!def.copyTarget) return { def, targetIndex: currIdx };
+    const nextIdx = def.copyTarget === 'right' ? currIdx + 1 : 0;
+    if (nextIdx === currIdx || nextIdx >= charms.length) return undefined;
+    currIdx = nextIdx;
+  }
+  return undefined;
+}
 
 /**
  * Pure scoring pipeline. Order: base hand -> each scoring card left to right
@@ -56,11 +81,15 @@ export function scoreHand(played: Card[], ctx: ScoreContext = {}): ScoreResult {
     held = [],
     discardsLeft = 0,
     handsLeft = 0,
+    money: startMoney = 0,
+    deckRemaining = 44,
     disabledSuit,
     bannedHands = [],
     sealedCharmIndices = [],
   } = ctx;
   const charms = (ctx.charms ?? []).map((c) => ({ ...c }));
+  const charmCount = charms.length;
+  const emptyCharmSlots = Math.max(0, MAX_CHARMS - charmCount);
   const { hand, scoringIds } = evaluateHand(played);
   const base = handBase(hand);
   const scoringSet = new Set(scoringIds);
@@ -104,14 +133,33 @@ export function scoreHand(played: Card[], ctx: ScoreContext = {}): ScoreResult {
   const fireHook = (hook: 'onCardScored' | 'onHeldInHand' | 'onHandScored', card?: Card) => {
     charms.forEach((inst, i) => {
       if (sealedSet.has(i)) return;
-      const def = getCharm(inst.defId);
-      const fn = def?.hooks[hook];
-      if (!def || !fn) return;
-      const e = fn({ hand, played, scoring, card, discardsLeft, handsLeft, counter: inst.counter });
+      const originDef = getCharm(inst.defId);
+      const resolved = resolveCharmDef(charms, i, sealedSet);
+      if (!originDef || !resolved) return;
+      const { def, targetIndex } = resolved;
+      const fn = def.hooks[hook];
+      if (!fn) return;
+      const targetInst = charms[targetIndex];
+      const e = fn({
+        hand,
+        played,
+        scoring,
+        held,
+        card,
+        discardsLeft,
+        handsLeft,
+        counter: targetInst.counter,
+        charmCount,
+        emptyCharmSlots,
+        money: startMoney + money,
+        deckRemaining,
+      });
       if (!e) return;
-      if (e.counter !== undefined) inst.counter = e.counter;
+      if (e.counter !== undefined && targetIndex === i) {
+        inst.counter = e.counter;
+      }
       if (e.chips || e.mult || e.xMult || e.money) {
-        push({ kind: 'charm', label: def.name, charmIndex: i, cardId: card?.id }, e);
+        push({ kind: 'charm', label: originDef.name, charmIndex: i, cardId: card?.id }, e);
       }
     });
   };

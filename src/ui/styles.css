@@ -1041,3 +1041,716 @@ body::after {
   60% { transform: translate(-5px, -3px) rotate(-0.4deg); }
   80% { transform: translate(5px, 4px) rotate(0.4deg); }
 }
+
+/* ---- Played Cards Center Arena & Per-Card / Per-Charm Floating Popups ---- */
+.played-center-zone {
+  position: relative;
+  z-index: 12;
+  min-height: 165px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.played-zone-placeholder {
+  border: 2px dashed rgba(173, 120, 255, 0.2);
+  border-radius: 16px;
+  padding: 28px 42px;
+  color: rgba(215, 184, 255, 0.38);
+  font-size: 0.9rem;
+  letter-spacing: 0.8px;
+}
+.played-cards-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  align-items: center;
+  animation: flyToCenter 0.22s cubic-bezier(0.2, 1.3, 0.3, 1);
+}
+@keyframes flyToCenter {
+  from { transform: translateY(60px) scale(0.85); opacity: 0.3; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.card.dimmed-card {
+  opacity: 0.48;
+  filter: saturate(0.5);
+  transform: scale(0.92) !important;
+}
+
+.card-popup,
+.charm-popup {
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.75);
+  z-index: 80;
+  animation: popBadge 0.38s cubic-bezier(0.2, 1.5, 0.3, 1) forwards;
+  pointer-events: none;
+}
+.charm-popup {
+  top: auto;
+  bottom: -30px;
+}
+.card-popup.chips, .charm-popup.chips {
+  background: linear-gradient(180deg, #2b8aff, #1258bd);
+  border: 2px solid #99ceff;
+}
+.card-popup.mult, .charm-popup.mult {
+  background: linear-gradient(180deg, #ff4b36, #b81f10);
+  border: 2px solid #ffb0a6;
+}
+.card-popup.money, .charm-popup.money {
+  background: linear-gradient(180deg, #f5b625, #b87909);
+  border: 2px solid #ffe799;
+}
+.card-popup.curse, .charm-popup.curse {
+  background: linear-gradient(180deg, #ff3e6c, #991135);
+  border: 2px solid #ffadc2;
+}
+@keyframes popBadge {
+  0% { transform: translateX(-50%) translateY(10px) scale(0.6); opacity: 0; }
+  60% { transform: translateX(-50%) translateY(-4px) scale(1.12); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+}
+
+/* ---- Overdrive Flame Scorebox ---- */
+.scorebox.overdrive {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 28px rgba(255, 120, 40, 0.65),
+    inset 0 0 22px rgba(255, 180, 60, 0.28);
+  animation: overdrivePulse 0.7s ease-in-out infinite alternate;
+}
+.overdrive-tag {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 1.2px;
+  text-shadow: 0 0 10px rgba(255, 120, 30, 0.9);
+}
+@keyframes overdrivePulse {
+  from { box-shadow: 0 0 18px rgba(255, 90, 30, 0.55); }
+  to { box-shadow: 0 0 32px rgba(255, 200, 60, 0.85); }
+}
+
+/* ---- Royal Court Cards & Visual 3D Deck Stack ---- */
+.card.royal-card .card-inner-frame {
+  border: 2px double rgba(212, 160, 56, 0.75);
+  background: radial-gradient(circle at center, rgba(255, 215, 120, 0.14) 0%, transparent 70%);
+}
+.royal-emblem {
+  font-size: 1.25rem;
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+.hand-and-deck-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  width: 100%;
+}
+
+.deck-pile {
+  position: relative;
+  width: 88px;
+  height: 126px;
+  flex-shrink: 0;
+}
+.deck-stack-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: radial-gradient(circle, #3c1f63 0%, #1b0c30 100%);
+  border: 2px solid #9d6bff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+}
+.deck-stack-card.layer-2 {
+  transform: translate(6px, 6px);
+  opacity: 0.55;
+}
+.deck-stack-card.layer-1 {
+  transform: translate(3px, 3px);
+  opacity: 0.8;
+}
+.deck-stack-card.top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-color: var(--gold);
+}
+.deck-rune {
+  color: var(--gold);
+  font-size: 1.2rem;
+}
+.deck-count {
+  font-size: 1.45rem;
+  color: #fff;
+}
+.deck-sub {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+/* ---- Rarity-Themed Tarot Crest Fallbacks & Idle Bobbing ---- */
+.tarot-crest {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, #331a5c 0%, #160a2b 100%);
+  border: 1.5px solid rgba(190, 145, 255, 0.5);
+  color: #d4b2ff;
+  overflow: hidden;
+}
+.tarot-crest.uncommon {
+  background: radial-gradient(circle, #143866 0%, #0b1930 100%);
+  border-color: #5eb2ff;
+  color: #82c6ff;
+}
+.tarot-crest.rare {
+  background: radial-gradient(circle, #591534 0%, #240818 100%);
+  border-color: #ff6b98;
+  color: #ff99b8;
+}
+.tarot-crest.legendary {
+  background: radial-gradient(circle, #5c3b10 0%, #261406 100%);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.tarot-crest-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bobbing {
+  animation: gentleBob 3.2s ease-in-out infinite;
+}
+@keyframes gentleBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ---- Arcane Floating Dust Particles ---- */
+.arcane-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 15% 25%, rgba(255, 214, 120, 0.55), transparent),
+    radial-gradient(2px 2px at 45% 70%, rgba(168, 112, 255, 0.5), transparent),
+    radial-gradient(2.5px 2.5px at 78% 32%, rgba(87, 247, 164, 0.45), transparent),
+    radial-gradient(2px 2px at 85% 80%, rgba(255, 190, 79, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 30% 85%, rgba(255, 120, 180, 0.45), transparent);
+  animation: driftParticles 12s linear infinite alternate;
+}
+@keyframes driftParticles {
+  from { transform: translateY(6px) scale(1); opacity: 0.65; }
+  to { transform: translateY(-10px) scale(1.04); opacity: 1; }
+}
+
+/* ---- Run Info Modal & Map Polish ---- */
+.info-btn {
+  width: 100%;
+  text-align: center;
+}
+.info-modal {
+  max-width: 820px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.info-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.info-modal-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--gold);
+}
+.deck-summary-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: rgba(15, 7, 28, 0.65);
+  padding: 8px 16px;
+  border-radius: 10px;
+}
+.suit-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+}
+.suit-pill.suit-hearts { color: #ff6b81; }
+.suit-pill.suit-diamonds { color: #ff9f59; }
+.suit-pill.suit-clubs { color: #57f7a4; }
+.suit-pill.suit-spades { color: #c7d2fe; }
+
+.hand-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+.hand-guide-table th,
+.hand-guide-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(114, 68, 179, 0.35);
+}
+.hand-guide-name {
+  font-weight: 800;
+  color: var(--gold);
+}
+.hand-guide-desc {
+  opacity: 0.85;
+}
+.mini-chips {
+  background: #1b6fe0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 800;
+}
+.mini-mult {
+  background: #d9341e;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 800;
+}
+.mini-times {
+  margin: 0 5px;
+  color: #ff9b8f;
+  font-weight: 800;
+}
+
+.map-header-banner {
+  text-align: center;
+}
+.stage-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.boss-map-portrait {
+  width: 78px;
+  height: 78px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--gold);
+}
+.boss-map-portrait .art-slot-img {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+.merchant-banner {
+  border-color: var(--gold);
+}
+.merchant-badge {
+  background: #b87909;
+}
+
+/* ---- Fix Charm Tooltip Hover Bridge & Click-to-Pin ---- */
+.charm {
+  cursor: pointer;
+}
+.charm:hover,
+.charm.pinned {
+  animation-play-state: paused;
+  transform: translateY(-4px) scale(1.03);
+  z-index: 50;
+}
+.charm.pinned {
+  box-shadow: 0 0 0 2px var(--gold), 0 8px 20px rgba(0, 0, 0, 0.7);
+}
+/* Invisible bridge filling the gap between .charm and .charm-tooltip so mouse never drops :hover */
+.charm-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -16px;
+  left: -10px;
+  right: -10px;
+  height: 18px;
+}
+.charm.pinned .charm-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Viewport-Fit 100vh Single-Screen Lock (No Scrollbars) ---- */
+html,
+body,
+#root {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.balatro-layout {
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  padding: 10px 14px;
+  gap: 14px;
+  grid-template-columns: 285px 1fr;
+  overflow: hidden;
+}
+
+.hud-sidebar {
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
+  gap: 9px;
+}
+
+.hud-blind-card {
+  padding: 8px 10px;
+}
+.hud-blind-header {
+  font-size: 1.02rem;
+}
+.hud-target-label {
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+.hud-target-value {
+  font-size: 1.65rem;
+}
+.hud-progress-track {
+  margin-top: 6px;
+  height: 6px;
+}
+
+.hud-round-score {
+  padding: 7px 12px;
+}
+.hud-score-num {
+  font-size: 1.45rem;
+}
+
+.scorebox {
+  padding: 9px 8px;
+}
+.hand-name {
+  font-size: 1.08rem;
+  min-height: 1.4rem;
+}
+.formula {
+  font-size: 1.85rem;
+  margin-top: 4px;
+}
+.chips,
+.mult {
+  min-width: 82px;
+  padding: 1px 10px;
+}
+
+.hud-stats-grid {
+  gap: 8px;
+}
+.hud-stat-box {
+  padding: 6px 8px;
+}
+.hud-stat-val {
+  font-size: 1.25rem;
+}
+.hud-stat-box.floor .hud-stat-val {
+  font-size: 1.05rem;
+}
+
+.felt-arena {
+  height: 100%;
+  min-height: 0;
+  padding: 10px 16px;
+  gap: 8px;
+}
+
+.charm-rack {
+  padding: 6px 12px 8px;
+  flex-shrink: 0;
+}
+.charm-rack-header {
+  font-size: 0.76rem;
+  margin-bottom: 5px;
+}
+.charm-bar {
+  gap: 10px;
+}
+.charm {
+  width: 118px;
+  height: 122px;
+  padding: 5px 5px;
+}
+.charm-art-wrap {
+  width: 56px;
+  height: 56px;
+}
+.art-slot-img {
+  width: 54px;
+  height: 54px;
+}
+.tarot-crest,
+.art-medallion {
+  width: 54px;
+  height: 54px;
+}
+.art-slot-emoji {
+  font-size: 1.65rem;
+}
+.charm-name {
+  font-size: 0.76rem;
+}
+
+.dealer-banner {
+  padding: 7px 12px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.dealer-portrait-frame {
+  width: 58px;
+  height: 58px;
+}
+.dealer-name {
+  font-size: 1.02rem;
+}
+.dealer-title {
+  font-size: 0.8rem;
+}
+.curse-pill {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+}
+.dealer-speech-bubble {
+  padding: 4px 10px;
+  font-size: 0.84rem;
+}
+.dealer-extra {
+  font-size: 0.75rem;
+}
+
+/* Center zone flexes dynamically to fit remaining vertical space */
+.played-center-zone {
+  flex: 1;
+  min-height: 0;
+  padding: 2px;
+}
+.played-zone-placeholder {
+  padding: 10px 24px;
+  font-size: 0.8rem;
+}
+.played-cards-row .card {
+  width: 82px;
+  height: 116px;
+}
+.played-cards-row .card .pip {
+  font-size: 2.3rem;
+}
+
+.hand-stage {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+.hand-selection-hint {
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+.hand {
+  padding: 22px 12px 8px;
+  min-height: 152px;
+}
+.card {
+  width: 90px;
+  height: 128px;
+}
+.card .pip {
+  font-size: 2.6rem;
+}
+.corner-rank {
+  font-size: 1rem;
+}
+.corner-suit {
+  font-size: 0.82rem;
+}
+.royal-emblem {
+  font-size: 1.05rem;
+  top: 18px;
+}
+
+.deck-pile {
+  width: 74px;
+  height: 106px;
+}
+.deck-count {
+  font-size: 1.25rem;
+}
+
+.controls {
+  flex-shrink: 0;
+  gap: 6px;
+}
+.btn.big-action {
+  font-size: 0.98rem;
+  padding: 9px 24px;
+}
+
+/* Fit Shop & FloorMap inside 100vh too */
+.stage-list {
+  gap: 14px;
+}
+.stage {
+  width: 235px;
+  padding: 14px 14px;
+  gap: 6px;
+}
+.stage.boss-stage {
+  width: 275px;
+}
+.boss-map-portrait {
+  width: 62px;
+  height: 62px;
+}
+.stage-title {
+  font-size: 1.12rem;
+}
+.stage-target {
+  font-size: 1.1rem;
+}
+.stage-curse {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+.shop-row {
+  gap: 12px;
+}
+.shop-item {
+  width: 188px;
+  padding: 11px;
+  gap: 5px;
+}
+.shop-emoji {
+  width: 60px;
+  height: 60px;
+}
+.shop-desc {
+  font-size: 0.74rem;
+}
+.small-buy {
+  font-size: 0.88rem;
+  padding: 6px 12px;
+}
+
+/* ---- Full-Bleed Card Art Override (Charm Rack & Shop Cards) ---- */
+.charm {
+  padding: 0;
+  overflow: visible;
+  border-width: 2.5px;
+}
+
+.charm-art-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.charm .art-slot,
+.charm .art-slot-img,
+.charm .tarot-crest,
+.shop-emoji .art-slot,
+.shop-emoji .art-slot-img,
+.shop-emoji .tarot-crest {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+.charm .art-slot-img,
+.shop-emoji .art-slot-img {
+  object-fit: cover;
+}
+
+.charm .art-slot-emoji {
+  font-size: 2.65rem;
+  transform: translateY(-6px);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+}
+
+.charm .rarity-dot {
+  position: relative;
+  z-index: 3;
+  margin-top: 5px;
+  background: rgba(12, 5, 24, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(2px);
+  font-weight: 700;
+}
+
+.charm .charm-name {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  margin-top: auto;
+  padding: 18px 6px 5px;
+  background: linear-gradient(
+    to top,
+    rgba(10, 4, 22, 0.96) 0%,
+    rgba(10, 4, 22, 0.82) 58%,
+    transparent 100%
+  );
+  border-radius: 0 0 10px 10px;
+  color: #fff6dc;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+}
+
+.charm .charm-counter {
+  z-index: 4;
+}
+
+/* Full-width art banner on Shop cards too */
+.shop-item {
+  padding: 8px;
+}
+.shop-emoji {
+  width: 100%;
+  height: 88px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 210, 110, 0.35);
+  background: #140824;
+}
+.shop-emoji .art-slot-emoji {
+  font-size: 2.3rem;
+}

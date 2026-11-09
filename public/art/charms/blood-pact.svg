@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 300">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="48%" r="65%">
+      <stop offset="0%" stop-color="#4f0d1b"/>
+      <stop offset="100%" stop-color="#170207"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff335c" stop-opacity="0.45"/>
+      <stop offset="65%" stop-color="#ffb8c6" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#170207" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed background -->
+  <rect width="256" height="300" fill="url(#bg)"/>
+  <circle cx="128" cy="148" r="110" fill="url(#halo)"/>
+
+  <!-- Tarot Outer & Inner Borders -->
+  <rect x="10" y="10" width="236" height="280" rx="14" fill="none" stroke="#ff335c" stroke-width="2.5" opacity="0.65"/>
+  <rect x="17" y="17" width="222" height="266" rx="10" fill="none" stroke="#ffb8c6" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.45"/>
+
+  <!-- Corner Ornaments -->
+  <circle cx="28" cy="28" r="4" fill="#ff335c" opacity="0.8"/>
+  <circle cx="228" cy="28" r="4" fill="#ff335c" opacity="0.8"/>
+  <circle cx="28" cy="242" r="4" fill="#ff335c" opacity="0.8"/>
+  <circle cx="228" cy="242" r="4" fill="#ff335c" opacity="0.8"/>
+
+  <!-- Roman Numeral Tarot Header -->
+  <text x="128" y="39" text-anchor="middle" fill="#ff335c" font-family="Georgia, serif" font-size="15" font-weight="bold" letter-spacing="2" opacity="0.85">XXXVIII</text>
+
+  <!-- Sacred Geometry Layer -->
+  
+        <circle cx="128" cy="148" r="82" fill="none" stroke="#ff335c" stroke-width="2.2" opacity="0.5"/>
+        <polygon points="128,68 198,188 58,188" fill="none" stroke="#ff335c" stroke-width="2" opacity="0.55"/>
+        <polygon points="128,228 198,108 58,108" fill="none" stroke="#ffb8c6" stroke-width="2" opacity="0.55"/>
+        <circle cx="128" cy="68" r="6" fill="#ff335c" opacity="0.8"/>
+        <circle cx="128" cy="228" r="6" fill="#ffb8c6" opacity="0.8"/>
+      
+
+  <!-- Center Medallion Pedestal -->
+  <circle cx="128" cy="148" r="46" fill="#170207" fill-opacity="0.72" stroke="#ff335c" stroke-width="2.5"/>
+
+  <!-- Main Artifact Icon -->
+  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🩸</text>
+</svg>

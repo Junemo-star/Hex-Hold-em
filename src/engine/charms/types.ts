@@ -17,11 +17,18 @@ export interface HookCtx {
   played: Card[];
   /** played cards that are part of the poker hand */
   scoring: Card[];
+  /** cards still held in hand while scoring */
+  held: Card[];
   /** the card being scored (onCardScored) or held (onHeldInHand) */
   card?: Card;
   discardsLeft: number;
   handsLeft: number;
   counter: number;
+  /** Balatro-style meta context */
+  charmCount: number;
+  emptyCharmSlots: number;
+  money: number;
+  deckRemaining: number;
 }
 
 export interface CharmDef {
@@ -31,6 +38,8 @@ export interface CharmDef {
   rarity: Rarity;
   cost: number;
   description: string;
+  /** Blueprint ('right') or Brainstorm ('leftmost') copy mechanic */
+  copyTarget?: 'right' | 'leftmost';
   hooks: Partial<{
     onCardScored(ctx: HookCtx): Effect | void;
     onHeldInHand(ctx: HookCtx): Effect | void;
@@ -42,4 +51,3 @@ export interface CharmInstance {
   defId: string;
   counter: number;
 }
-
