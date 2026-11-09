@@ -38,9 +38,13 @@
         <circle cx="128" cy="148" r="52" fill="none" stroke="#7ac7ff" stroke-width="2" opacity="0.6"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#080e17" fill-opacity="0.72" stroke="#7ac7ff" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🛡️</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Heavy Runic Knight Heater Shield -->
+    <path d="M74,82 L182,82 L182,144 C182,192 128,224 128,224 C128,224 74,192 74,144 Z" fill="#33415c" stroke="#90e0ef" stroke-width="5"/>
+    <path d="M88,96 L168,96 L168,142 C168,178 128,204 128,204 C128,204 88,178 88,142 Z" fill="#1b263b" stroke="#00b4d8" stroke-width="2"/>
+    <line x1="128" y1="86" x2="128" y2="216" stroke="#90e0ef" stroke-width="4"/>
+    <line x1="78" y1="142" x2="178" y2="142" stroke="#90e0ef" stroke-width="4"/>
+    <circle cx="128" cy="142" r="14" fill="#00f5d4" stroke="#ffffff" stroke-width="2"/>
+  </g>
 </svg>

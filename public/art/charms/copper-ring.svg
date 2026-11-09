@@ -38,9 +38,13 @@
         <rect x="83" y="103" width="90" height="90" transform="rotate(45 128 148)" fill="#f0945b" opacity="0.14" stroke="#f0945b" stroke-width="1.5"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#140b06" fill-opacity="0.72" stroke="#f0945b" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🥉</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Engraved Bronze-Copper Arcane Band -->
+    <circle cx="128" cy="148" r="56" fill="none" stroke="#d97736" stroke-width="22"/>
+    <circle cx="128" cy="148" r="56" fill="none" stroke="#ffba82" stroke-width="4" stroke-dasharray="10 8"/>
+    <circle cx="128" cy="148" r="67" fill="none" stroke="#57f7a4" stroke-width="2" opacity="0.8"/>
+    <circle cx="128" cy="148" r="45" fill="none" stroke="#57f7a4" stroke-width="2" opacity="0.8"/>
+    <polygon points="128,76 142,92 128,108 114,92" fill="#57f7a4" stroke="#ffffff" stroke-width="2"/>
+  </g>
 </svg>

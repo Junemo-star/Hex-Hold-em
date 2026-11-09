@@ -39,9 +39,14 @@
         <line x1="128" y1="44" x2="128" y2="252" stroke="#ff4778" stroke-width="1.2" opacity="0.4"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#17030a" fill-opacity="0.72" stroke="#ff4778" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🏺</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Gothic Obsidian Vampire Chalice with Levitating Blood Drops -->
+    <path d="M84,96 L172,96 C168,148 148,166 128,168 C108,166 88,148 84,96 Z" fill="#2b0918" stroke="#ff477e" stroke-width="3.5"/>
+    <rect x="120" y="168" width="16" height="42" fill="#590d22" stroke="#ff477e" stroke-width="2"/>
+    <ellipse cx="128" cy="214" rx="38" ry="8" fill="#590d22" stroke="#ff477e" stroke-width="2.5"/>
+    <path d="M128,62 C138,76 136,88 128,88 C120,88 118,76 128,62 Z" fill="#ff0a54" stroke="#ffccd5" stroke-width="1.5"/>
+    <circle cx="108" cy="78" r="5" fill="#ff0a54"/>
+    <circle cx="148" cy="78" r="5" fill="#ff0a54"/>
+  </g>
 </svg>

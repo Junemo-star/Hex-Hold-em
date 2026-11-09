@@ -1754,3 +1754,68 @@ body,
 .shop-emoji .art-slot-emoji {
   font-size: 2.3rem;
 }
+
+/* ---- Larger Playing Cards & High-Visibility Rank Numbers ---- */
+.balatro-layout {
+  max-width: 1460px;
+}
+
+.hand {
+  padding: 26px 8px 10px;
+  min-height: 194px;
+  gap: 6px;
+}
+.hand .card + .card {
+  margin-left: 0;
+}
+
+.card {
+  width: 114px;
+  height: 162px;
+  padding: 6px;
+  border-radius: 14px;
+  border-width: 2.5px;
+}
+.card-inner-frame {
+  border-radius: 9px;
+}
+
+.card .corner.top-left {
+  top: 5px;
+  left: 7px;
+}
+.card .corner.bottom-right {
+  bottom: 5px;
+  right: 7px;
+}
+.corner-rank {
+  font-size: 1.68rem;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.5px;
+}
+.corner-suit {
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+.card .pip {
+  font-size: 3.4rem;
+}
+.royal-emblem {
+  font-size: 1.35rem;
+  top: 22px;
+}
+
+.played-cards-row .card {
+  width: 104px;
+  height: 148px;
+}
+.played-cards-row .card .corner-rank {
+  font-size: 1.5rem;
+}
+.played-cards-row .card .corner-suit {
+  font-size: 1.1rem;
+}
+.played-cards-row .card .pip {
+  font-size: 3rem;
+}

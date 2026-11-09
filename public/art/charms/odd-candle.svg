@@ -39,9 +39,13 @@
         <polygon points="128,62 172,148 128,234 84,148" fill="none" stroke="#70e4ff" stroke-width="1.5" opacity="0.5"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#0d061a" fill-opacity="0.72" stroke="#70e4ff" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🕯️</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Occult Purple Wax Candle with Ghostly Cyan Flame -->
+    <rect x="98" y="132" width="60" height="92" rx="8" fill="#5e2b97" stroke="#d599ff" stroke-width="3"/>
+    <path d="M98,142 Q112,165 118,146 Q128,175 138,148 Q148,166 158,142" fill="#8b4bd1" stroke="#d599ff" stroke-width="2"/>
+    <line x1="128" y1="132" x2="128" y2="118" stroke="#222" stroke-width="4"/>
+    <path d="M128,60 C158,92 152,122 128,122 C104,122 98,92 128,60 Z" fill="#48cae4" stroke="#caf0f8" stroke-width="2.5"/>
+    <path d="M128,78 C142,96 140,116 128,116 C116,116 114,96 128,78 Z" fill="#ffffff"/>
+  </g>
 </svg>

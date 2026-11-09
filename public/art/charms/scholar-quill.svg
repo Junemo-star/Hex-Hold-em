@@ -39,9 +39,12 @@
         <path d="M88,82 A76,76 0 1,0 188,202 A62,62 0 1,1 88,82 Z" fill="#78d2ff" opacity="0.22"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#06101c" fill-opacity="0.72" stroke="#78d2ff" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🪶</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Luminous Phoenix Feather Quill -->
+    <path d="M82,218 L168,72" stroke="#fff3b0" stroke-width="5" stroke-linecap="round"/>
+    <path d="M168,72 C196,92 184,148 134,174 C106,188 96,192 96,192 C96,192 96,144 124,108 C142,84 156,74 168,72 Z" fill="#00bbf9" stroke="#caf0f8" stroke-width="2.5"/>
+    <path d="M168,72 C178,104 164,142 126,162 C114,132 138,94 168,72 Z" fill="#fee440" opacity="0.8"/>
+    <circle cx="78" cy="224" r="6" fill="#fee440"/>
+  </g>
 </svg>

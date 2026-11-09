@@ -74,11 +74,11 @@ export function CardView({
     setTilt(null);
   }
 
-  // Fan geometry: center cards sit higher, edge cards angle outward
+  // Fan geometry: gentle arc so cards never cover each other's rank numbers
   const mid = (total - 1) / 2;
   const offset = total > 1 ? index - mid : 0;
-  const fanAngle = offset * 2.6;
-  const fanArcY = Math.abs(offset) * Math.abs(offset) * 1.6;
+  const fanAngle = offset * 1.6;
+  const fanArcY = Math.abs(offset) * Math.abs(offset) * 1.1;
 
   const baseLiftY = active ? -32 : selected ? -30 : tilt ? -12 : fanArcY;
   const scale = active ? 1.15 : selected ? 1.05 : tilt ? 1.06 : 1;

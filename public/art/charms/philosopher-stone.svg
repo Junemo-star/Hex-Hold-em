@@ -39,9 +39,13 @@
         <polygon points="128,62 172,148 128,234 84,148" fill="none" stroke="#ffbe4f" stroke-width="1.5" opacity="0.5"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#1c040b" fill-opacity="0.72" stroke="#ffbe4f" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🔮</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Legendary Crimson Philosopher's Stone in Golden Alchemical Cage -->
+    <circle cx="128" cy="148" r="64" fill="none" stroke="#ffd166" stroke-width="3"/>
+    <polygon points="128,74 192,186 64,186" fill="none" stroke="#ffd166" stroke-width="3"/>
+    <rect x="84" y="104" width="88" height="88" fill="none" stroke="#ffd166" stroke-width="2.5"/>
+    <polygon points="128,96 168,148 128,200 88,148" fill="#e63946" stroke="#ffffff" stroke-width="3"/>
+    <polygon points="128,96 168,148 128,148" fill="#ff758f" opacity="0.8"/>
+  </g>
 </svg>

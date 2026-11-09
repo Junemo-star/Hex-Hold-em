@@ -39,9 +39,17 @@
         <path d="M88,82 A76,76 0 1,0 188,202 A62,62 0 1,1 88,82 Z" fill="#57f7a4" opacity="0.22"/>
       
 
-  <!-- Center Medallion Pedestal -->
-  <circle cx="128" cy="148" r="46" fill="#06170f" fill-opacity="0.72" stroke="#57f7a4" stroke-width="2.5"/>
-
-  <!-- Main Artifact Icon -->
-  <text x="128" y="172" text-anchor="middle" font-size="72" filter="url(#glow)">🌿</text>
+  <!-- Custom Illustrated Artifact -->
+  <g filter="url(#glow)">
+    <!-- Glowing Druid Branch & Emerald Leaves -->
+    <path d="M68,210 Q105,165 128,145 Q155,120 186,82" fill="none" stroke="#8c5828" stroke-width="14" stroke-linecap="round"/>
+    <path d="M118,155 Q92,130 76,105" fill="none" stroke="#8c5828" stroke-width="9" stroke-linecap="round"/>
+    <path d="M145,130 Q175,140 194,155" fill="none" stroke="#8c5828" stroke-width="8" stroke-linecap="round"/>
+    <path d="M76,105 C55,85 75,62 96,85 C102,95 88,108 76,105 Z" fill="#57f7a4" stroke="#d4ffea" stroke-width="2"/>
+    <path d="M186,82 C175,55 208,52 210,78 C210,94 192,92 186,82 Z" fill="#57f7a4" stroke="#d4ffea" stroke-width="2"/>
+    <path d="M194,155 C218,142 224,172 200,178 C188,180 186,164 194,155 Z" fill="#38d989" stroke="#d4ffea" stroke-width="2"/>
+    <path d="M132,115 C118,85 148,74 156,102 C158,114 140,120 132,115 Z" fill="#80ff72" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="95" cy="175" r="5" fill="#b8ff70"/>
+    <circle cx="162" cy="105" r="4" fill="#b8ff70"/>
+  </g>
 </svg>
