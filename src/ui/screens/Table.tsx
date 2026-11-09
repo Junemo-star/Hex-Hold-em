@@ -94,7 +94,6 @@ export function Table({
     setTimeout(() => setPopping(false), 220);
   }
 
-  // Derived active boss curses
   const disabledSuit =
     dealer?.disabledSuitAfterHand2 && handsPlayed >= 2 ? dealer.disabledSuitAfterHand2 : undefined;
   const sealedIndices =
@@ -147,7 +146,6 @@ export function Table({
     );
   }
 
-  /** Remove used cards from hand and refill from the draw pile. */
   function refill(removeIds: string[], nextHandsPlayed: number) {
     const remaining = hand.filter((c) => !removeIds.includes(c.id));
     const { drawn, rest } = draw(drawPile, handSize - remaining.length);
@@ -187,7 +185,7 @@ export function Table({
     if (step.addMult) items.push([`+${step.addMult} Mult`, 'mult']);
     if (step.xMult) items.push([`X${step.xMult}`, 'mult']);
     if (step.money) items.push([`+$${step.money}`, 'money']);
-    items.forEach(([text, kind], i) => pushFloater(text, kind, (i - (items.length - 1) / 2) * 110));
+    items.forEach(([text, kind], i) => pushFloater(text, kind, (i - (items.length - 1) / 2) * 90));
   }
 
   async function play() {
@@ -314,6 +312,7 @@ export function Table({
 
   const shown = live ?? (preview ? { chips: preview.chips, mult: preview.mult, label: preview.type } : null);
   const canAct = phase === 'idle' && selected.length > 0;
+  const progressPct = Math.min(100, Math.round((score / Math.max(1, currentTarget)) * 100));
 
   const extraStatus = useMemo(() => {
     if (!dealer) return undefined;
@@ -326,85 +325,67 @@ export function Table({
   }, [dealer, disabledSuit, sealedIndices, bannedHands, bossPhase]);
 
   return (
-    <div className={`table ${shaking ? 'screen-shake' : ''}`}>
-      <header className="topbar">
-        <div className="blind">
-          <div className="blind-name">{title}</div>
-          <div className="blind-target">เป้าหมาย <strong>{currentTarget}</strong></div>
-        </div>
-        <div className="round-score">
-          <span>แต้มรวม</span>
-          <strong>{score}</strong>
-        </div>
-      </header>
-
-      {dealer && (
-        <DealerBanner
-          dealer={dealer}
-          speech={speech}
-          curseActive={curseActive}
-          extraStatus={extraStatus}
-        />
-      )}
-
-      <CharmBar
-        charms={charms}
-        activeIndex={activeCharm}
-        sealedIndices={sealedIndices}
-        onMove={phase === 'idle' ? (i, dir) => setCharms((c) => moveCharm(c, i, dir)) : undefined}
-      />
-
-      <section className="scorebox">
-        <div className="hand-name">{shown?.label ?? 'เลือกไพ่เพื่อเล่น'}</div>
-        <div className={`formula ${popping ? 'pop' : ''}`}>
-          <span className="chips">{shown?.chips ?? 0}</span>
-          <span className="times">×</span>
-          <span className="mult">{shown?.mult ?? 0}</span>
-        </div>
-        <div className="floaters">
-          {floaters.map((f) => (
-            <span key={f.key} className={`floater ${f.kind}`} style={{ marginLeft: f.x }}>
-              {f.text}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="hand">
-        {hand.map((c) => (
-          <CardView
-            key={c.id}
-            card={c}
-            selected={selected.includes(c.id)}
-            active={activeCard === c.id}
-            disabledSuit={Boolean(disabledSuit && c.suit === disabledSuit)}
-            onClick={() => toggle(c.id)}
-          />
-        ))}
-      </section>
-
-      <footer className="controls">
-        <div className="counters">
-          <div className="counter hands">Hands <strong>{handsLeft}</strong></div>
-          <div className="counter discards">Discards <strong>{discardsLeft}</strong></div>
-          <div className="counter deck">สำรับ <strong>{drawPile.length}</strong></div>
-        </div>
-        <div className="buttons">
-          <button className="btn play" disabled={!canAct || handsLeft === 0} onClick={play}>
-            Play Hand
-          </button>
-          <button className="btn discard" disabled={!canAct || discardsLeft === 0} onClick={discard}>
-            Discard{dealer?.discardCost ? ` (-$${dealer.discardCost})` : ''}
-          </button>
-          <div className="sort">
-            <button className="btn small" onClick={() => setSortBy('rank')} disabled={sortBy === 'rank'}>เรียงแต้ม</button>
-            <button className="btn small" onClick={() => setSortBy('suit')} disabled={sortBy === 'suit'}>เรียงดอก</button>
+    <div className={`balatro-layout ${shaking ? 'screen-shake' : ''}`}>
+      {/* LEFT ARCADE SIDEBAR */}
+      <aside className="hud-sidebar">
+        <div className={`hud-blind-card ${dealer ? 'is-boss' : ''}`}>
+          <div className="hud-blind-header">{title}</div>
+          <div className="hud-target-label">ทำแต้มให้ถึงอย่างน้อย</div>
+          <div className="hud-target-value">{currentTarget.toLocaleString()}</div>
+          <div className="hud-progress-track">
+            <div className="hud-progress-fill" style={{ width: `${progressPct}%` }} />
           </div>
+        </div>
+
+        <div className="hud-round-score">
+          <span className="hud-label">แต้มสะสมในโต๊ะ</span>
+          <strong className="hud-score-num">{score.toLocaleString()}</strong>
+        </div>
+
+        <section className="scorebox">
+          <div className="hand-name">{shown?.label ?? 'เลือกไพ่ 1–5 ใบ'}</div>
+          <div className={`formula ${popping ? 'pop' : ''}`}>
+            <span className="chips">{shown?.chips ?? 0}</span>
+            <span className="times">×</span>
+            <span className="mult">{shown?.mult ?? 0}</span>
+          </div>
+          <div className="floaters">
+            {floaters.map((f) => (
+              <span key={f.key} className={`floater ${f.kind}`} style={{ marginLeft: f.x }}>
+                {f.text}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <div className="hud-stats-grid">
+          <div className="hud-stat-box hands">
+            <span className="hud-stat-label">Hands</span>
+            <strong className="hud-stat-val">{handsLeft}</strong>
+          </div>
+          <div className="hud-stat-box discards">
+            <span className="hud-stat-label">Discards</span>
+            <strong className="hud-stat-val">{discardsLeft}</strong>
+          </div>
+          <div className="hud-stat-box money">
+            <span className="hud-stat-label">เงินทุน</span>
+            <strong className="hud-stat-val">${Math.max(0, run.money + bonusRef.current)}</strong>
+          </div>
+          <div className="hud-stat-box floor">
+            <span className="hud-stat-label">ชั้น / สำรับ</span>
+            <strong className="hud-stat-val">
+              {run.floor} · 🃏{drawPile.length}
+            </strong>
+          </div>
+        </div>
+
+        <div className="hud-Subcontrols">
           <div className="speed">
+            <span className="sub-label">ความเร็ว</span>
             {([1, 2, 4] as const).map((s) => (
               <button
                 key={s}
-                className="btn small"
+                className={`btn small ${speed === s ? 'active-pill' : ''}`}
                 disabled={speed === s}
                 onClick={() => onChangeSpeed(s)}
               >
@@ -413,16 +394,90 @@ export function Table({
             ))}
           </div>
         </div>
-      </footer>
+      </aside>
+
+      {/* RIGHT MYSTIC FELT ARENA */}
+      <main className="felt-arena">
+        <div className="arcane-circle-watermark" aria-hidden="true" />
+
+        <CharmBar
+          charms={charms}
+          activeIndex={activeCharm}
+          sealedIndices={sealedIndices}
+          onMove={phase === 'idle' ? (i, dir) => setCharms((c) => moveCharm(c, i, dir)) : undefined}
+        />
+
+        {dealer && (
+          <DealerBanner
+            dealer={dealer}
+            speech={speech}
+            curseActive={curseActive}
+            extraStatus={extraStatus}
+          />
+        )}
+
+        <section className="hand-stage">
+          <div className="hand-selection-hint">
+            เลือกแล้ว {selected.length} / {MAX_SELECT} ใบ
+          </div>
+          <div className="hand">
+            {hand.map((c, idx) => (
+              <CardView
+                key={c.id}
+                card={c}
+                index={idx}
+                total={hand.length}
+                selected={selected.includes(c.id)}
+                active={activeCard === c.id}
+                disabledSuit={Boolean(disabledSuit && c.suit === disabledSuit)}
+                onClick={() => toggle(c.id)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <footer className="controls">
+          <div className="buttons">
+            <button className="btn play big-action" disabled={!canAct || handsLeft === 0} onClick={play}>
+              ▶ Play Hand
+            </button>
+            <div className="sort">
+              <button
+                className={`btn small ${sortBy === 'rank' ? 'active-pill' : ''}`}
+                onClick={() => setSortBy('rank')}
+                disabled={sortBy === 'rank'}
+              >
+                เรียงแต้ม
+              </button>
+              <button
+                className={`btn small ${sortBy === 'suit' ? 'active-pill' : ''}`}
+                onClick={() => setSortBy('suit')}
+                disabled={sortBy === 'suit'}
+              >
+                เรียงดอก
+              </button>
+            </div>
+            <button
+              className="btn discard big-action"
+              disabled={!canAct || discardsLeft === 0}
+              onClick={discard}
+            >
+              ✖ Discard{dealer?.discardCost ? ` (-$${dealer.discardCost})` : ''}
+            </button>
+          </div>
+        </footer>
+      </main>
 
       {(phase === 'won' || phase === 'lost') && (
         <div className="overlay">
           <div className="modal">
-            <h2>{phase === 'won' ? 'ชนะโต๊ะนี้!' : 'แพ้แล้ว...'}</h2>
+            <h2>{phase === 'won' ? '✨ ชนะโต๊ะนี้!' : '💀 พ่ายแพ้...'}</h2>
             {dealer && <p className="dealer-quote">“{speech}”</p>}
-            <p>แต้มสุดท้าย {score} / {currentTarget}</p>
-            <button className="btn play" onClick={finish}>
-              {phase === 'won' ? 'รับเงิน' : 'ต่อไป'}
+            <p className="final-score-line">
+              แต้มสุดท้าย <strong>{score.toLocaleString()}</strong> / {currentTarget.toLocaleString()}
+            </p>
+            <button className="btn play big-action" onClick={finish}>
+              {phase === 'won' ? '💰 รับเงินรางวัล →' : 'สรุปผล →'}
             </button>
           </div>
         </div>
